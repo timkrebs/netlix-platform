@@ -28,7 +28,7 @@ deployment "dev" {
     node_max_size       = 5
     db_instance_class   = "db.t4g.medium"
     db_name             = "netlix"
-    db_engine_version   = "16.4"
+    db_engine_version   = "16.6"
     github_org          = "timkrebs"
     github_pat          = "placeholder-replace-with-vault-dynamic-secret"
     environment         = "dev"
@@ -57,7 +57,7 @@ deployment "staging" {
     node_max_size       = 6
     db_instance_class   = "db.m6i.large"
     db_name             = "netlix"
-    db_engine_version   = "16.4"
+    db_engine_version   = "16.6"
     github_org          = "timkrebs"
     github_pat          = "placeholder-replace-with-vault-dynamic-secret"
     environment         = "staging"
