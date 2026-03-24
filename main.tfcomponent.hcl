@@ -50,6 +50,12 @@ variable "role_arn"             { type = string }
 variable "hcp_project_id"       { type = string }
 variable "vault_cluster_id"     { type = string }
 variable "vault_address"        { type = string }
+
+variable "vault_token" {
+  type      = string
+  sensitive = true
+  ephemeral = true
+}
 variable "vpc_cidr"             { type = string }
 variable "azs"                  { type = list(string) }
 variable "cluster_name"         { type = string }
@@ -95,6 +101,7 @@ provider "aws" "main" {
 provider "vault" "hcp" {
   config {
     address   = var.vault_address
+    token     = var.vault_token
     namespace = "admin"
   }
 }

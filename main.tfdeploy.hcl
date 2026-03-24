@@ -8,6 +8,13 @@ identity_token "hcp" {
   audience = ["hashicorp.com"]
 }
 
+# ─── Variable set store (Vault token) ────────────────────────────────────
+
+store "varset" "netlix-vault" {
+  id       = "varset-DygE5qeNYGw62Gxs"
+  category = "terraform"
+}
+
 # ─── Deployment: dev ───────────────────────────────────────────────────────
 
 deployment "dev" {
@@ -18,6 +25,7 @@ deployment "dev" {
     hcp_project_id      = "ebae3a61-f614-4427-bed4-9d99817dea57"
     vault_cluster_id    = "netlix-vault"
     vault_address       = "https://netlix-vault-public-vault-7ebc141d.dffa8084.z1.hashicorp.cloud:8200"
+    vault_token         = store.varset.netlix-vault.vault_token
     vpc_cidr            = "10.0.0.0/16"
     azs                 = ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
     cluster_name        = "netlix-dev"
@@ -47,6 +55,7 @@ deployment "staging" {
     hcp_project_id      = "ebae3a61-f614-4427-bed4-9d99817dea57"
     vault_cluster_id    = "netlix-vault"
     vault_address       = "https://netlix-vault-public-vault-7ebc141d.dffa8084.z1.hashicorp.cloud:8200"
+    vault_token         = store.varset.netlix-vault.vault_token
     vpc_cidr            = "10.1.0.0/16"
     azs                 = ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
     cluster_name        = "netlix-staging"
