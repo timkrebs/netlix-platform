@@ -6,6 +6,12 @@ resource "helm_release" "argocd" {
   chart            = "argo-cd"
   version          = "7.7.0"
 
-  set { name = "server.service.type"              value = "LoadBalancer" }
-  set { name = "configs.params.server\\.insecure" value = "true" }
+  set {
+    name  = "server.service.type"
+    value = "LoadBalancer"
+  }
+  set {
+    name  = "configs.params.server\\.insecure"
+    value = "true"
+  }
 }

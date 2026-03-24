@@ -3,7 +3,8 @@
 *.tfstate.backup
 *.tfplan
 .terraform/
-.terraform.lock.hcl
+# Keep root lock file for Stacks, ignore component lock files
+terraform/components/**/.terraform.lock.hcl
 crash.log
 override.tf
 override.tf.json
