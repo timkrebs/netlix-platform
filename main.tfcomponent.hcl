@@ -74,11 +74,15 @@ variable "github_pat" {
   sensitive = true
 }
 
-variable "vault_admin_username"  { type = string }
+variable "vault_admin_username" {
+  type      = string
+  ephemeral = true
+}
 
 variable "vault_admin_password" {
   type      = string
   sensitive = true
+  ephemeral = true
 }
 
 variable "environment"          { type = string }
