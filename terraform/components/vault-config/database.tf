@@ -9,7 +9,7 @@ resource "vault_database_secret_backend_connection" "postgres" {
   allowed_roles = ["netlix-readwrite"]
 
   postgresql {
-    connection_url = "postgresql://{{username}}:{{password}}@${var.rds_endpoint}:${var.rds_port}/${var.db_name}?sslmode=require"
+    connection_url = "postgresql://{{username}}:{{password}}@${var.rds_endpoint}/${var.db_name}?sslmode=require"
     username       = var.rds_admin_username
     password       = var.rds_admin_password
   }
