@@ -15,6 +15,11 @@ store "varset" "netlix-vault" {
   category = "terraform"
 }
 
+store "varset" "netlix-hcp" {
+  id       = "varset-VcYpNGZZ2aHnMVL2"
+  category = "terraform"
+}
+
 # ─── Deployment: dev ───────────────────────────────────────────────────────
 
 deployment "dev" {
@@ -26,6 +31,9 @@ deployment "dev" {
     vault_cluster_id    = "netlix-vault"
     vault_address       = "https://netlix-vault-public-vault-7ebc141d.dffa8084.z1.hashicorp.cloud:8200"
     vault_token         = store.varset.netlix-vault.vault_token
+    hcp_client_id       = store.varset.netlix-hcp.hcp_client_id
+    hcp_client_secret   = store.varset.netlix-hcp.hcp_client_secret
+    hvn_id              = "netlix-vault"
     vpc_cidr            = "10.0.0.0/16"
     azs                 = ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
     cluster_name        = "netlix-dev"
@@ -56,6 +64,9 @@ deployment "staging" {
     vault_cluster_id    = "netlix-vault"
     vault_address       = "https://netlix-vault-public-vault-7ebc141d.dffa8084.z1.hashicorp.cloud:8200"
     vault_token         = store.varset.netlix-vault.vault_token
+    hcp_client_id       = store.varset.netlix-hcp.hcp_client_id
+    hcp_client_secret   = store.varset.netlix-hcp.hcp_client_secret
+    hvn_id              = "netlix-vault"
     vpc_cidr            = "10.1.0.0/16"
     azs                 = ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
     cluster_name        = "netlix-staging"

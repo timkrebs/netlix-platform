@@ -37,6 +37,10 @@ required_providers {
     source  = "hashicorp/cloudinit"
     version = "~> 2.0"
   }
+  hcp = {
+    source  = "hashicorp/hcp"
+    version = "~> 0.100"
+  }
 }
 
 # ─── Variables ─────────────────────────────────────────────────────────────
@@ -50,6 +54,18 @@ variable "role_arn"             { type = string }
 variable "hcp_project_id"       { type = string }
 variable "vault_cluster_id"     { type = string }
 variable "vault_address"        { type = string }
+variable "hvn_id"               { type = string }
+
+variable "hcp_client_id" {
+  type      = string
+  ephemeral = true
+}
+
+variable "hcp_client_secret" {
+  type      = string
+  sensitive = true
+  ephemeral = true
+}
 
 variable "vault_token" {
   type      = string
@@ -144,6 +160,14 @@ provider "cloudinit" "default" {
   config {}
 }
 
+provider "hcp" "main" {
+  config {
+    project_id    = var.hcp_project_id
+    client_id     = var.hcp_client_id
+    client_secret = var.hcp_client_secret
+  }
+}
+
 # ─── Components ────────────────────────────────────────────────────────────
 
 component "networking" {
@@ -186,6 +210,26 @@ component "eks" {
   }
 }
 
+component "hvn_peering" {
+  source = "./terraform/components/hvn-peering"
+
+  inputs = {
+    hvn_id                 = var.hvn_id
+    peer_vpc_id            = component.networking.vpc_id
+    peer_account_id        = component.networking.vpc_owner_id
+    peer_vpc_region        = var.aws_region
+    vpc_cidr               = var.vpc_cidr
+    private_route_table_ids = component.networking.private_route_table_ids
+    environment            = var.environment
+    project                = var.project
+  }
+
+  providers = {
+    hcp = provider.hcp.main
+    aws = provider.aws.main
+  }
+}
+
 component "rds" {
   source = "./terraform/components/rds"
 
@@ -196,6 +240,7 @@ component "rds" {
     db_name             = var.db_name
     db_engine_version   = var.db_engine_version
     eks_security_group  = component.eks.cluster_security_group_id
+    hvn_cidr_block      = component.hvn_peering.hvn_cidr_block
     environment         = var.environment
     project             = var.project
   }
