@@ -70,6 +70,17 @@ variable "pki_allowed_domains" {
   type        = list(string)
 }
 
+variable "vault_admin_username" {
+  description = "Vault admin username for userpass auth"
+  type        = string
+}
+
+variable "vault_admin_password" {
+  description = "Vault admin password for userpass auth"
+  type        = string
+  sensitive   = true
+}
+
 variable "environment" {
   description = "Environment name"
   type        = string
