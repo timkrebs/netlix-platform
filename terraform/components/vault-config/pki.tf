@@ -18,7 +18,7 @@ resource "vault_pki_secret_backend_root_cert" "root" {
 
 resource "vault_pki_secret_backend_config_urls" "urls" {
   backend                 = vault_mount.pki.path
-  issuing_certificates    = "${local.vault_addr}/v1/${vault_mount.pki.path}/ca"
+  issuing_certificates    = ["${local.vault_addr}/v1/${vault_mount.pki.path}/ca"]
   crl_distribution_points = ["${local.vault_addr}/v1/${vault_mount.pki.path}/crl"]
 }
 

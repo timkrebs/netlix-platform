@@ -21,6 +21,22 @@ required_providers {
     source  = "hashicorp/random"
     version = "~> 3.0"
   }
+  time = {
+    source  = "hashicorp/time"
+    version = "~> 0.12"
+  }
+  tls = {
+    source  = "hashicorp/tls"
+    version = "~> 4.0"
+  }
+  null = {
+    source  = "hashicorp/null"
+    version = "~> 3.0"
+  }
+  cloudinit = {
+    source  = "hashicorp/cloudinit"
+    version = "~> 2.0"
+  }
 }
 
 # ─── Variables ─────────────────────────────────────────────────────────────
@@ -98,6 +114,26 @@ provider "kubernetes" "eks" {
   }
 }
 
+provider "random" "default" {
+  config {}
+}
+
+provider "time" "default" {
+  config {}
+}
+
+provider "tls" "default" {
+  config {}
+}
+
+provider "null" "default" {
+  config {}
+}
+
+provider "cloudinit" "default" {
+  config {}
+}
+
 # ─── Components ────────────────────────────────────────────────────────────
 
 component "networking" {
@@ -132,7 +168,11 @@ component "eks" {
   }
 
   providers = {
-    aws = provider.aws.main
+    aws       = provider.aws.main
+    time      = provider.time.default
+    tls       = provider.tls.default
+    null      = provider.null.default
+    cloudinit = provider.cloudinit.default
   }
 }
 
@@ -151,7 +191,8 @@ component "rds" {
   }
 
   providers = {
-    aws = provider.aws.main
+    aws    = provider.aws.main
+    random = provider.random.default
   }
 }
 
