@@ -45,7 +45,7 @@ resource "aws_iam_role" "tfc_dev" {
       Action    = "sts:AssumeRoleWithWebIdentity"
       Condition = {
         StringEquals = { "app.terraform.io:aud" = "terraform-stacks-private-preview" }
-        StringLike   = { "app.terraform.io:sub" = "organization:netlix-platform:project:netlix-infra:stack:netlix-dev:*" }
+        StringLike   = { "app.terraform.io:sub" = "organization:tim-krebs-org:project:netlix-infra:stack:netlix-dev:*" }
       }
     }]
   })
@@ -67,7 +67,7 @@ resource "aws_iam_role" "tfc_staging" {
       Action    = "sts:AssumeRoleWithWebIdentity"
       Condition = {
         StringEquals = { "app.terraform.io:aud" = "terraform-stacks-private-preview" }
-        StringLike   = { "app.terraform.io:sub" = "organization:netlix-platform:project:netlix-infra:stack:netlix-staging:*" }
+        StringLike   = { "app.terraform.io:sub" = "organization:tim-krebs-org:project:netlix-infra:stack:netlix-staging:*" }
       }
     }]
   })

@@ -73,7 +73,7 @@ netlix-platform/
 
 ### Phase 0 — Bootstrap
 
-1. **Create TFC organization** `netlix-platform` with Stacks + Cost Estimation enabled
+1. **TFC organization** `tim-krebs-org` with Stacks + Cost Estimation enabled
 2. **Set up HCP Vault Dedicated** cluster `netlix-vault` in project `netlix`
 3. **Bootstrap AWS OIDC trust:**
    ```bash
