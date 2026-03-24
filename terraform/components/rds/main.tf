@@ -1,0 +1,83 @@
+resource "random_password" "master" {
+  length  = 32
+  special = false
+}
+
+module "rds" {
+  source  = "terraform-aws-modules/rds/aws"
+  version = "~> 6.0"
+
+  identifier = "${var.project}-${var.environment}"
+
+  engine               = "postgres"
+  engine_version       = var.db_engine_version
+  family               = "postgres16"
+  major_engine_version = "16"
+  instance_class       = var.db_instance_class
+
+  allocated_storage     = 20
+  max_allocated_storage = 100
+
+  db_name  = var.db_name
+  username = "netlixadmin"
+  password = random_password.master.result
+  port     = 5432
+
+  storage_encrypted = true
+  kms_key_id        = aws_kms_key.rds.arn
+
+  db_subnet_group_name   = aws_db_subnet_group.this.name
+  vpc_security_group_ids = [aws_security_group.rds.id]
+  publicly_accessible    = false
+
+  backup_retention_period = 7
+  backup_window           = "03:00-04:00"
+  maintenance_window      = "Mon:04:00-Mon:05:00"
+
+  monitoring_interval                   = 60
+  monitoring_role_name                  = "${var.project}-rds-monitoring"
+  create_monitoring_role                = true
+  performance_insights_enabled          = true
+  performance_insights_retention_period = 7
+
+  multi_az            = var.environment == "production"
+  deletion_protection = var.environment == "production"
+  skip_final_snapshot = var.environment != "production"
+
+  tags = { component = "rds" }
+}
+
+resource "aws_kms_key" "rds" {
+  description             = "Netlix RDS encryption"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+  tags                    = { component = "rds" }
+}
+
+resource "aws_db_subnet_group" "this" {
+  name       = "${var.project}-${var.environment}"
+  subnet_ids = var.private_subnet_ids
+  tags       = { component = "rds" }
+}
+
+resource "aws_security_group" "rds" {
+  name_prefix = "${var.project}-rds-"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [var.eks_security_group]
+    description     = "PostgreSQL from EKS"
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = { component = "rds" }
+}

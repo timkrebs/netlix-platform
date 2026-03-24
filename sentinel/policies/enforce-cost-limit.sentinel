@@ -1,0 +1,20 @@
+import "tfrun"
+import "decimal"
+
+monthly_limit = 2000.00
+
+cost_available = rule { tfrun.cost_estimate is not null }
+
+cost_within_limit = rule when cost_available {
+    decimal.new(tfrun.cost_estimate.proposed_monthly_cost).less_than(
+        decimal.new(monthly_limit)
+    )
+}
+
+main = rule { cost_within_limit }
+
+if not cost_within_limit {
+    proposed = tfrun.cost_estimate.proposed_monthly_cost else "unknown"
+    print("Proposed monthly cost ($${proposed}) exceeds limit ($${monthly_limit}).")
+    print("An admin can override this soft-mandatory policy.")
+}

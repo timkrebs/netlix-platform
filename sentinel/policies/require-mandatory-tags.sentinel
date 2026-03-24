@@ -1,0 +1,28 @@
+import "tfplan/v2" as tfplan
+
+mandatory_tags = ["environment", "project", "managed_by"]
+
+taggable_resources = filter tfplan.resource_changes as _, rc {
+    rc.provider_name is "registry.terraform.io/hashicorp/aws" and
+    rc.mode is "managed" and
+    rc.change.after is not null and
+    (rc.change.actions contains "create" or rc.change.actions contains "update")
+}
+
+violations = []
+for taggable_resources as address, rc {
+    tags = rc.change.after.tags else {}
+    tags_all = rc.change.after.tags_all else tags
+    for mandatory_tags as tag {
+        if tag not in tags_all {
+            append(violations, "${address} is missing mandatory tag '${tag}'")
+        }
+    }
+}
+
+main = rule { length(violations) is 0 }
+
+if length(violations) > 0 {
+    print("Tag violations found:")
+    for violations as v { print("  - " + v) }
+}

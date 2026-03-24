@@ -1,0 +1,27 @@
+import "tfplan/v2" as tfplan
+
+s3_public_access = filter tfplan.resource_changes as _, rc {
+    rc.type is "aws_s3_bucket_public_access_block" and rc.change.actions contains "create"
+}
+
+s3_buckets_private = rule {
+    all s3_public_access as _, rc {
+        rc.change.after.block_public_acls is true and
+        rc.change.after.block_public_policy is true and
+        rc.change.after.ignore_public_acls is true and
+        rc.change.after.restrict_public_buckets is true
+    }
+}
+
+s3_acls = filter tfplan.resource_changes as _, rc {
+    rc.type is "aws_s3_bucket_acl" and rc.change.actions contains "create"
+}
+
+no_public_acl = rule {
+    all s3_acls as _, rc {
+        rc.change.after.acl is not "public-read" and
+        rc.change.after.acl is not "public-read-write"
+    }
+}
+
+main = rule { s3_buckets_private and no_public_acl }

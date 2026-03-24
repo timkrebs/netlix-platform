@@ -1,0 +1,30 @@
+import "tfplan/v2" as tfplan
+
+rds_instances = filter tfplan.resource_changes as _, rc {
+    rc.type is "aws_db_instance" and rc.change.actions contains "create"
+}
+
+rds_encrypted = rule {
+    all rds_instances as _, rc { rc.change.after.storage_encrypted is true }
+}
+
+ebs_volumes = filter tfplan.resource_changes as _, rc {
+    rc.type is "aws_ebs_volume" and rc.change.actions contains "create"
+}
+
+ebs_encrypted = rule {
+    all ebs_volumes as _, rc { rc.change.after.encrypted is true }
+}
+
+eks_clusters = filter tfplan.resource_changes as _, rc {
+    rc.type is "aws_eks_cluster" and rc.change.actions contains "create"
+}
+
+eks_encrypted = rule {
+    all eks_clusters as _, rc {
+        rc.change.after.encryption_config is not null and
+        length(rc.change.after.encryption_config) > 0
+    }
+}
+
+main = rule { rds_encrypted and ebs_encrypted and eks_encrypted }

@@ -1,0 +1,15 @@
+import "tfplan/v2" as tfplan
+
+vpcs = filter tfplan.resource_changes as _, rc {
+    rc.type is "aws_vpc" and rc.change.actions contains "create"
+}
+
+flow_logs = filter tfplan.resource_changes as _, rc {
+    rc.type is "aws_flow_log" and rc.change.actions contains "create"
+}
+
+main = rule { length(vpcs) is 0 or length(flow_logs) > 0 }
+
+if not main {
+    print("Advisory: VPC(s) created without flow logs. Consider enabling them.")
+}

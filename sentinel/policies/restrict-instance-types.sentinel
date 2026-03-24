@@ -1,0 +1,26 @@
+import "tfplan/v2" as tfplan
+
+allowed_ec2 = ["t3.", "t3a.", "t4g.", "m6i.", "m6g.", "m7i.", "r6i.", "r6g.", "c6i.", "c6g."]
+allowed_rds = ["db.t3.", "db.t4g.", "db.m6i.", "db.m6g.", "db.r6i.", "db.r6g."]
+
+ec2_instances = filter tfplan.resource_changes as _, rc {
+    rc.type is "aws_instance" and rc.change.actions contains "create"
+}
+
+ec2_valid = rule {
+    all ec2_instances as _, rc {
+        any allowed_ec2 as prefix { rc.change.after.instance_type starts_with prefix }
+    }
+}
+
+rds_instances = filter tfplan.resource_changes as _, rc {
+    rc.type is "aws_db_instance" and rc.change.actions contains "create"
+}
+
+rds_valid = rule {
+    all rds_instances as _, rc {
+        any allowed_rds as prefix { rc.change.after.instance_class starts_with prefix }
+    }
+}
+
+main = rule { ec2_valid and rds_valid }
