@@ -30,7 +30,7 @@ data "tls_certificate" "tfc" {
 
 resource "aws_iam_openid_connect_provider" "tfc" {
   url             = "https://app.terraform.io"
-  client_id_list  = ["terraform-stacks-private-preview"]
+  client_id_list  = ["aws.workload.identity"]
   thumbprint_list = [data.tls_certificate.tfc.certificates[0].sha1_fingerprint]
 }
 
@@ -44,7 +44,7 @@ resource "aws_iam_role" "tfc_dev" {
       Principal = { Federated = aws_iam_openid_connect_provider.tfc.arn }
       Action    = "sts:AssumeRoleWithWebIdentity"
       Condition = {
-        StringEquals = { "app.terraform.io:aud" = "terraform-stacks-private-preview" }
+        StringEquals = { "app.terraform.io:aud" = "aws.workload.identity" }
         StringLike   = { "app.terraform.io:sub" = "organization:tim-krebs-org:project:netlix-infra:stack:netlix-dev:*" }
       }
     }]
@@ -66,7 +66,7 @@ resource "aws_iam_role" "tfc_staging" {
       Principal = { Federated = aws_iam_openid_connect_provider.tfc.arn }
       Action    = "sts:AssumeRoleWithWebIdentity"
       Condition = {
-        StringEquals = { "app.terraform.io:aud" = "terraform-stacks-private-preview" }
+        StringEquals = { "app.terraform.io:aud" = "aws.workload.identity" }
         StringLike   = { "app.terraform.io:sub" = "organization:tim-krebs-org:project:netlix-infra:stack:netlix-staging:*" }
       }
     }]

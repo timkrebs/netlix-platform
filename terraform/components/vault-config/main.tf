@@ -1,3 +1,3 @@
 locals {
-  vault_addr = "https://${var.vault_cluster_id}.vault.hashicorp.cloud:8200"
+  vault_addr = var.vault_address
 }

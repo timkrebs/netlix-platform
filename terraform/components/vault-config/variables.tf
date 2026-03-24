@@ -3,6 +3,11 @@ variable "vault_cluster_id" {
   type        = string
 }
 
+variable "vault_address" {
+  description = "HCP Vault public address"
+  type        = string
+}
+
 variable "eks_cluster_endpoint" {
   description = "EKS cluster API endpoint"
   type        = string

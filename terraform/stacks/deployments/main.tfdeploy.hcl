@@ -1,7 +1,7 @@
 # ─── Identity tokens (OIDC — no static credentials) ───────────────────────
 
 identity_token "aws" {
-  audience = ["terraform-stacks-private-preview"]
+  audience = ["aws.workload.identity"]
 }
 
 identity_token "hcp" {
@@ -14,6 +14,7 @@ variable "aws_region"           { type = string }
 variable "role_arn"             { type = string }
 variable "hcp_project_id"       { type = string }
 variable "vault_cluster_id"     { type = string }
+variable "vault_address"        { type = string }
 variable "vpc_cidr"             { type = string }
 variable "azs"                  { type = list(string) }
 variable "cluster_name"         { type = string }
@@ -53,7 +54,7 @@ provider "aws" "main" {
 
 provider "vault" "hcp" {
   config {
-    address   = "https://${var.vault_cluster_id}.vault.${var.hcp_project_id}.aws.hashicorp.cloud:8200"
+    address   = var.vault_address
     namespace = "admin"
   }
 }
@@ -81,9 +82,10 @@ provider "kubernetes" "eks" {
 deployment "dev" {
   inputs = {
     aws_region          = "eu-central-1"
-    role_arn            = "arn:aws:iam::role/tfc-netlix-dev"
-    hcp_project_id      = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    role_arn            = "arn:aws:iam::173003892479:role/tfc-netlix-dev"
+    hcp_project_id      = "ebae3a61-f614-4427-bed4-9d99817dea57"
     vault_cluster_id    = "netlix-vault"
+    vault_address       = "https://netlix-vault-public-vault-7ebc141d.dffa8084.z1.hashicorp.cloud:8200"
     vpc_cidr            = "10.0.0.0/16"
     azs                 = ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
     cluster_name        = "netlix-dev"
@@ -108,9 +110,10 @@ deployment "dev" {
 deployment "staging" {
   inputs = {
     aws_region          = "eu-central-1"
-    role_arn            = "arn:aws:iam::role/tfc-netlix-staging"
-    hcp_project_id      = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    role_arn            = "arn:aws:iam::173003892479:role/tfc-netlix-staging"
+    hcp_project_id      = "ebae3a61-f614-4427-bed4-9d99817dea57"
     vault_cluster_id    = "netlix-vault"
+    vault_address       = "https://netlix-vault-public-vault-7ebc141d.dffa8084.z1.hashicorp.cloud:8200"
     vpc_cidr            = "10.1.0.0/16"
     azs                 = ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
     cluster_name        = "netlix-staging"
@@ -192,6 +195,7 @@ component "vault_config" {
 
   inputs = {
     vault_cluster_id      = var.vault_cluster_id
+    vault_address         = var.vault_address
     eks_cluster_endpoint  = component.eks.cluster_endpoint
     eks_cluster_ca        = component.eks.cluster_ca_certificate
     eks_oidc_provider_arn = component.eks.oidc_provider_arn
