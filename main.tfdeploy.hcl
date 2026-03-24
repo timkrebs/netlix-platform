@@ -27,7 +27,10 @@ variable "db_instance_class"    { type = string }
 variable "db_name"              { type = string }
 variable "db_engine_version"    { type = string }
 variable "github_org"           { type = string }
-variable "github_pat"           { type = string sensitive = true }
+variable "github_pat" {
+  type      = string
+  sensitive = true
+}
 variable "environment"          { type = string }
 variable "project"              { type = string }
 variable "default_tags"         { type = map(string) }
