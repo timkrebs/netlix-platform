@@ -23,18 +23,9 @@ required_providers {
   }
 }
 
-# ─── Identity tokens (OIDC — no static credentials) ───────────────────────
-
-identity_token "aws" {
-  audience = ["aws.workload.identity"]
-}
-
-identity_token "hcp" {
-  audience = ["hashicorp.com"]
-}
-
 # ─── Variables ─────────────────────────────────────────────────────────────
 
+variable "aws_identity_token"   { type = string }
 variable "aws_region"           { type = string }
 variable "role_arn"             { type = string }
 variable "hcp_project_id"       { type = string }
@@ -70,7 +61,7 @@ provider "aws" "main" {
 
     assume_role_with_web_identity {
       role_arn           = var.role_arn
-      web_identity_token = identity_token.aws.jwt
+      web_identity_token = var.aws_identity_token
     }
 
     default_tags {

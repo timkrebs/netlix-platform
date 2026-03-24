@@ -1,7 +1,18 @@
+# ─── Identity tokens (OIDC — no static credentials) ───────────────────────
+
+identity_token "aws" {
+  audience = ["aws.workload.identity"]
+}
+
+identity_token "hcp" {
+  audience = ["hashicorp.com"]
+}
+
 # ─── Deployment: dev ───────────────────────────────────────────────────────
 
 deployment "dev" {
   inputs = {
+    aws_identity_token  = identity_token.aws.jwt
     aws_region          = "eu-central-1"
     role_arn            = "arn:aws:iam::173003892479:role/tfc-netlix-dev"
     hcp_project_id      = "ebae3a61-f614-4427-bed4-9d99817dea57"
@@ -30,6 +41,7 @@ deployment "dev" {
 
 deployment "staging" {
   inputs = {
+    aws_identity_token  = identity_token.aws.jwt
     aws_region          = "eu-central-1"
     role_arn            = "arn:aws:iam::173003892479:role/tfc-netlix-staging"
     hcp_project_id      = "ebae3a61-f614-4427-bed4-9d99817dea57"
