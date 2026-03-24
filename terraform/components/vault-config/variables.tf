@@ -73,12 +73,14 @@ variable "pki_allowed_domains" {
 variable "vault_admin_username" {
   description = "Vault admin username for userpass auth"
   type        = string
+  ephemeral   = true
 }
 
 variable "vault_admin_password" {
   description = "Vault admin password for userpass auth"
   type        = string
   sensitive   = true
+  ephemeral   = true
 }
 
 variable "environment" {
