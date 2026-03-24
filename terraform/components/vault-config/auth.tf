@@ -20,21 +20,13 @@ resource "vault_kubernetes_auth_backend_role" "vso" {
 }
 
 # ─── Userpass auth for admin access ────────────────────────────────────────
+# The auth backend and policy are managed by Terraform.
+# Create the admin user after deploy via Vault CLI or UI:
+#   vault write auth/userpass/users/timkrebs password=<pw> policies=admin-policy
 
 resource "vault_auth_backend" "userpass" {
   type = "userpass"
   path = "userpass"
-}
-
-resource "vault_generic_endpoint" "admin_user" {
-  depends_on           = [vault_auth_backend.userpass]
-  path                 = "auth/userpass/users/${var.vault_admin_username}"
-  ignore_absent_fields = true
-
-  data_json = jsonencode({
-    password = var.vault_admin_password
-    policies = "admin-policy"
-  })
 }
 
 resource "vault_policy" "admin" {

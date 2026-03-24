@@ -74,17 +74,6 @@ variable "github_pat" {
   sensitive = true
 }
 
-variable "vault_admin_username" {
-  type      = string
-  ephemeral = true
-}
-
-variable "vault_admin_password" {
-  type      = string
-  sensitive = true
-  ephemeral = true
-}
-
 variable "environment"          { type = string }
 variable "project"              { type = string }
 variable "default_tags"         { type = map(string) }
@@ -235,8 +224,6 @@ component "vault_config" {
     github_org            = var.github_org
     github_pat            = var.github_pat
     pki_allowed_domains   = ["netlix.dev", "netlix.internal", "svc.cluster.local"]
-    vault_admin_username  = var.vault_admin_username
-    vault_admin_password  = var.vault_admin_password
     environment           = var.environment
   }
 

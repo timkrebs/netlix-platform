@@ -38,10 +38,8 @@ deployment "dev" {
     db_name             = "netlix"
     db_engine_version   = "16.6"
     github_org          = "timkrebs"
-    github_pat            = "placeholder-replace-with-vault-dynamic-secret"
-    vault_admin_username  = store.varset.netlix-vault.vault_admin_username
-    vault_admin_password  = store.varset.netlix-vault.vault_admin_password
-    environment           = "dev"
+    github_pat          = "placeholder-replace-with-vault-dynamic-secret"
+    environment         = "dev"
     project             = "netlix"
     default_tags        = {}
   }
@@ -70,10 +68,8 @@ deployment "staging" {
     db_name             = "netlix"
     db_engine_version   = "16.6"
     github_org          = "timkrebs"
-    github_pat            = "placeholder-replace-with-vault-dynamic-secret"
-    vault_admin_username  = store.varset.netlix-vault.vault_admin_username
-    vault_admin_password  = store.varset.netlix-vault.vault_admin_password
-    environment           = "staging"
+    github_pat          = "placeholder-replace-with-vault-dynamic-secret"
+    environment         = "staging"
     project             = "netlix"
     default_tags        = {}
   }
