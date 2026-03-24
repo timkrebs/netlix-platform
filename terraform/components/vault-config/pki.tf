@@ -60,10 +60,4 @@ resource "vault_pki_secret_backend_role" "app" {
   key_type         = "ec"
   key_bits         = 256
   require_cn       = false
-
-  key_usage = ["DigitalSignature", "KeyAgreement", "KeyEncipherment"]
-
-  lifecycle {
-    ignore_changes = [key_usage]
-  }
 }
