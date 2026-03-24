@@ -41,7 +41,10 @@ required_providers {
 
 # ─── Variables ─────────────────────────────────────────────────────────────
 
-variable "aws_identity_token"   { type = string }
+variable "aws_identity_token" {
+  type      = string
+  ephemeral = true
+}
 variable "aws_region"           { type = string }
 variable "role_arn"             { type = string }
 variable "hcp_project_id"       { type = string }

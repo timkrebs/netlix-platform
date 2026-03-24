@@ -30,7 +30,7 @@ deployment "dev" {
     db_name             = "netlix"
     db_engine_version   = "16.4"
     github_org          = "timkrebs"
-    github_pat          = sensitive("from-vault")
+    github_pat          = "placeholder-replace-with-vault-dynamic-secret"
     environment         = "dev"
     project             = "netlix"
     default_tags        = {}
@@ -59,7 +59,7 @@ deployment "staging" {
     db_name             = "netlix"
     db_engine_version   = "16.4"
     github_org          = "timkrebs"
-    github_pat          = sensitive("from-vault")
+    github_pat          = "placeholder-replace-with-vault-dynamic-secret"
     environment         = "staging"
     project             = "netlix"
     default_tags        = {}
