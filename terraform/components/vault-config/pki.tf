@@ -51,13 +51,21 @@ resource "vault_pki_secret_backend_intermediate_set_signed" "int" {
   certificate = vault_pki_secret_backend_root_sign_intermediate.int.certificate
 }
 
-resource "vault_pki_secret_backend_role" "app" {
-  backend          = vault_mount.pki_int.path
-  name             = "netlix-app"
-  allowed_domains  = var.pki_allowed_domains
-  allow_subdomains = true
-  max_ttl          = "72h"
-  key_type         = "ec"
-  key_bits         = 256
-  require_cn       = false
+# Using vault_generic_endpoint instead of vault_pki_secret_backend_role
+# to avoid a known provider idempotency bug that causes infinite
+# plan/apply loops in Terraform Stacks.
+resource "vault_generic_endpoint" "pki_role_app" {
+  path                 = "${vault_mount.pki_int.path}/roles/netlix-app"
+  ignore_absent_fields = true
+  disable_read         = true
+
+  data_json = jsonencode({
+    allowed_domains  = var.pki_allowed_domains
+    allow_subdomains = true
+    max_ttl          = "72h"
+    key_type         = "ec"
+    key_bits         = 256
+    require_cn       = false
+    key_usage        = ["DigitalSignature", "KeyAgreement", "KeyEncipherment"]
+  })
 }
