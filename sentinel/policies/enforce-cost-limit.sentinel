@@ -7,7 +7,7 @@ cost_available = rule { tfrun.cost_estimate is not null }
 
 cost_within_limit = rule when cost_available {
     decimal.new(tfrun.cost_estimate.proposed_monthly_cost).less_than(
-        decimal.new(monthly_limit)
+        decimal.new(monthly_limit),
     )
 }
 
