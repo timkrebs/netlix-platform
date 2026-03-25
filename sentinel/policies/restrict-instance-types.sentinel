@@ -1,4 +1,5 @@
 import "tfplan/v2" as tfplan
+import "strings"
 
 allowed_ec2 = ["t3.", "t3a.", "t4g.", "m6i.", "m6g.", "m7i.", "r6i.", "r6g.", "c6i.", "c6g."]
 allowed_rds = ["db.t3.", "db.t4g.", "db.m6i.", "db.m6g.", "db.r6i.", "db.r6g."]
@@ -9,7 +10,7 @@ ec2_instances = filter tfplan.resource_changes as _, rc {
 
 ec2_valid = rule {
     all ec2_instances as _, rc {
-        any allowed_ec2 as prefix { rc.change.after.instance_type starts_with prefix }
+        any allowed_ec2 as prefix { strings.has_prefix(rc.change.after.instance_type, prefix) }
     }
 }
 
@@ -19,7 +20,7 @@ rds_instances = filter tfplan.resource_changes as _, rc {
 
 rds_valid = rule {
     all rds_instances as _, rc {
-        any allowed_rds as prefix { rc.change.after.instance_class starts_with prefix }
+        any allowed_rds as prefix { strings.has_prefix(rc.change.after.instance_class, prefix) }
     }
 }
 
