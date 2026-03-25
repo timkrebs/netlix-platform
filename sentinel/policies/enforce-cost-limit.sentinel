@@ -15,6 +15,6 @@ main = rule { cost_within_limit }
 
 if not cost_within_limit {
     proposed = tfrun.cost_estimate.proposed_monthly_cost else "unknown"
-    print("Proposed monthly cost ($${proposed}) exceeds limit ($${monthly_limit}).")
+    print("Proposed monthly cost ($" + string(proposed) + ") exceeds limit ($" + string(monthly_limit) + ").")
     print("An admin can override this soft-mandatory policy.")
 }

@@ -110,6 +110,7 @@ provider "aws" "main" {
       tags = merge(var.default_tags, {
         environment = var.environment
         project     = var.project
+        managed_by  = "terraform"
       })
     }
   }
@@ -125,7 +126,7 @@ provider "vault" "hcp" {
 
 provider "helm" "eks" {
   config {
-    kubernetes {
+    kubernetes = {
       host                   = component.eks.cluster_endpoint
       cluster_ca_certificate = base64decode(component.eks.cluster_ca_certificate)
       token                  = component.eks.cluster_token
