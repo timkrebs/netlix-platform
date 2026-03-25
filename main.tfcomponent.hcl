@@ -270,8 +270,9 @@ component "vault_config" {
     db_name               = var.db_name
     github_org            = var.github_org
     github_pat            = var.github_pat
-    pki_allowed_domains   = ["netlix.dev", "netlix.internal", "svc.cluster.local"]
-    environment           = var.environment
+    pki_allowed_domains     = ["netlix.dev", "netlix.internal", "svc.cluster.local"]
+    environment             = var.environment
+    create_shared_resources = var.environment == "dev"
   }
 
   providers = {

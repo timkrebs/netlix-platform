@@ -1,7 +1,7 @@
 resource "vault_mount" "kv" {
-  path        = "secret"
+  path        = "secret/${var.environment}"
   type        = "kv-v2"
-  description = "Netlix application secrets"
+  description = "Netlix ${var.environment} application secrets"
 }
 
 resource "vault_kv_secret_v2" "app_config" {

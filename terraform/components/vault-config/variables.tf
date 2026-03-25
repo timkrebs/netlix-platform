@@ -74,3 +74,9 @@ variable "environment" {
   description = "Environment name"
   type        = string
 }
+
+variable "create_shared_resources" {
+  description = "Create shared Vault resources (userpass, root PKI, admin policy). Set to true for only one environment."
+  type        = bool
+  default     = false
+}

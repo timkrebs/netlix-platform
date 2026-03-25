@@ -25,11 +25,13 @@ resource "vault_kubernetes_auth_backend_role" "vso" {
 #   vault write auth/userpass/users/timkrebs password=<pw> policies=admin-policy
 
 resource "vault_auth_backend" "userpass" {
-  type = "userpass"
-  path = "userpass"
+  count = var.create_shared_resources ? 1 : 0
+  type  = "userpass"
+  path  = "userpass"
 }
 
 resource "vault_policy" "admin" {
+  count  = var.create_shared_resources ? 1 : 0
   name   = "admin-policy"
   policy = <<-EOT
     path "*" {

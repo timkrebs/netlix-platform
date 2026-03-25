@@ -1,5 +1,6 @@
-# Root CA
+# Root CA (shared — created only by the primary environment)
 resource "vault_mount" "pki" {
+  count                     = var.create_shared_resources ? 1 : 0
   path                      = "pki"
   type                      = "pki"
   description               = "Netlix root PKI"
@@ -8,7 +9,8 @@ resource "vault_mount" "pki" {
 }
 
 resource "vault_pki_secret_backend_root_cert" "root" {
-  backend     = vault_mount.pki.path
+  count       = var.create_shared_resources ? 1 : 0
+  backend     = vault_mount.pki[0].path
   type        = "internal"
   common_name = "Netlix Internal CA"
   ttl         = "87600h"
@@ -17,16 +19,17 @@ resource "vault_pki_secret_backend_root_cert" "root" {
 }
 
 resource "vault_pki_secret_backend_config_urls" "urls" {
-  backend                 = vault_mount.pki.path
-  issuing_certificates    = ["${local.vault_addr}/v1/${vault_mount.pki.path}/ca"]
-  crl_distribution_points = ["${local.vault_addr}/v1/${vault_mount.pki.path}/crl"]
+  count                   = var.create_shared_resources ? 1 : 0
+  backend                 = vault_mount.pki[0].path
+  issuing_certificates    = ["${local.vault_addr}/v1/${vault_mount.pki[0].path}/ca"]
+  crl_distribution_points = ["${local.vault_addr}/v1/${vault_mount.pki[0].path}/crl"]
 }
 
-# Intermediate CA
+# Intermediate CA (per-environment)
 resource "vault_mount" "pki_int" {
-  path                      = "pki_int"
+  path                      = "pki_int/${var.environment}"
   type                      = "pki"
-  description               = "Netlix intermediate PKI"
+  description               = "Netlix ${var.environment} intermediate PKI"
   default_lease_ttl_seconds = 3600
   max_lease_ttl_seconds     = 43200
 }
@@ -40,9 +43,9 @@ resource "vault_pki_secret_backend_intermediate_cert_request" "int" {
 }
 
 resource "vault_pki_secret_backend_root_sign_intermediate" "int" {
-  backend     = vault_mount.pki.path
+  backend     = "pki"
   csr         = vault_pki_secret_backend_intermediate_cert_request.int.csr
-  common_name = "Netlix Intermediate CA"
+  common_name = "Netlix ${var.environment} Intermediate CA"
   ttl         = "43800h"
 }
 

@@ -62,22 +62,22 @@ module "rds" {
 module "vault_config" {
   source = "../../components/vault-config"
 
-  vault_cluster_id      = var.vault_cluster_id
-  vault_address         = var.vault_address
-  eks_cluster_endpoint  = module.eks.cluster_endpoint
-  eks_cluster_ca        = module.eks.cluster_ca_certificate
-  eks_oidc_provider_arn = module.eks.oidc_provider_arn
-  eks_oidc_provider_url = module.eks.oidc_provider_url
-  rds_endpoint          = module.rds.endpoint
-  rds_port              = module.rds.port
-  rds_admin_username    = module.rds.admin_username
-  rds_admin_password    = module.rds.admin_password
-  db_name               = var.db_name
-  github_org            = var.github_org
-  github_pat            = var.github_pat
+  vault_cluster_id        = var.vault_cluster_id
+  vault_address           = var.vault_address
+  eks_cluster_endpoint    = module.eks.cluster_endpoint
+  eks_cluster_ca          = module.eks.cluster_ca_certificate
+  eks_oidc_provider_arn   = module.eks.oidc_provider_arn
+  eks_oidc_provider_url   = module.eks.oidc_provider_url
+  rds_endpoint            = module.rds.endpoint
+  rds_port                = module.rds.port
+  rds_admin_username      = module.rds.admin_username
+  rds_admin_password      = module.rds.admin_password
+  db_name                 = var.db_name
+  github_org              = var.github_org
+  github_pat              = var.github_pat
   pki_allowed_domains     = ["netlix.dev", "netlix.internal", "svc.cluster.local"]
   environment             = var.environment
-  create_shared_resources = true
+  create_shared_resources = false
 
   depends_on = [module.hvn_peering]
 }

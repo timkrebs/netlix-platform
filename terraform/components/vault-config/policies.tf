@@ -1,13 +1,13 @@
 resource "vault_policy" "vso" {
-  name   = "netlix-vso"
+  name   = "netlix-vso-${var.environment}"
   policy = <<-EOT
-    path "pki_int/issue/netlix-app" {
+    path "${vault_mount.pki_int.path}/issue/netlix-app" {
       capabilities = ["create", "update"]
     }
-    path "secret/data/netlix/*" {
+    path "${vault_mount.kv.path}/data/netlix/*" {
       capabilities = ["read"]
     }
-    path "database/creds/netlix-readwrite" {
+    path "${vault_mount.database.path}/creds/netlix-readwrite" {
       capabilities = ["read"]
     }
     path "sys/leases/renew" {
@@ -17,15 +17,15 @@ resource "vault_policy" "vso" {
 }
 
 resource "vault_policy" "app" {
-  name   = "netlix-app"
+  name   = "netlix-app-${var.environment}"
   policy = <<-EOT
-    path "secret/data/netlix/*" {
+    path "${vault_mount.kv.path}/data/netlix/*" {
       capabilities = ["read"]
     }
-    path "database/creds/netlix-readwrite" {
+    path "${vault_mount.database.path}/creds/netlix-readwrite" {
       capabilities = ["read"]
     }
-    path "pki_int/issue/netlix-app" {
+    path "${vault_mount.pki_int.path}/issue/netlix-app" {
       capabilities = ["create", "update"]
     }
   EOT
