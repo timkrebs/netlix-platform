@@ -31,11 +31,6 @@ import {
 }
 
 import {
-  to = module.rds.module.rds.module.db_instance.aws_db_instance.this[0]
-  id = "${var.project}-${var.environment}"
-}
-
-import {
   to = module.rds.aws_db_subnet_group.this
   id = "${var.project}-${var.environment}"
 }
