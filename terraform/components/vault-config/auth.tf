@@ -1,9 +1,11 @@
 resource "vault_auth_backend" "kubernetes" {
-  type = "kubernetes"
-  path = "kubernetes/netlix-${var.environment}"
+  namespace = vault_namespace.env.path_fq
+  type      = "kubernetes"
+  path      = "kubernetes"
 }
 
 resource "vault_kubernetes_auth_backend_config" "eks" {
+  namespace              = vault_namespace.env.path_fq
   backend                = vault_auth_backend.kubernetes.path
   kubernetes_host        = var.eks_cluster_endpoint
   kubernetes_ca_cert     = base64decode(var.eks_cluster_ca)
@@ -11,6 +13,7 @@ resource "vault_kubernetes_auth_backend_config" "eks" {
 }
 
 resource "vault_kubernetes_auth_backend_role" "vso" {
+  namespace                        = vault_namespace.env.path_fq
   backend                          = vault_auth_backend.kubernetes.path
   role_name                        = "netlix-vso"
   bound_service_account_names      = ["vault-secrets-operator"]
@@ -19,8 +22,7 @@ resource "vault_kubernetes_auth_backend_role" "vso" {
   token_ttl                        = 3600
 }
 
-# ─── Userpass auth for admin access ────────────────────────────────────────
-# The auth backend and policy are managed by Terraform.
+# ─── Userpass auth for admin access (shared in admin namespace) ──────────
 # Create the admin user after deploy via Vault CLI or UI:
 #   vault write auth/userpass/users/timkrebs password=<pw> policies=admin-policy
 
@@ -43,6 +45,7 @@ resource "vault_policy" "admin" {
 # ─── Kubernetes auth roles ─────────────────────────────────────────────────
 
 resource "vault_kubernetes_auth_backend_role" "app" {
+  namespace                        = vault_namespace.env.path_fq
   backend                          = vault_auth_backend.kubernetes.path
   role_name                        = "netlix-app"
   bound_service_account_names      = ["netlix-app"]

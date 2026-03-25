@@ -1,9 +1,11 @@
 resource "vault_mount" "database" {
-  path = "database/${var.environment}"
-  type = "database"
+  namespace = vault_namespace.env.path_fq
+  path      = "database"
+  type      = "database"
 }
 
 resource "vault_database_secret_backend_connection" "postgres" {
+  namespace     = vault_namespace.env.path_fq
   backend       = vault_mount.database.path
   name          = "netlix-db"
   allowed_roles = ["netlix-readwrite"]
@@ -16,6 +18,7 @@ resource "vault_database_secret_backend_connection" "postgres" {
 }
 
 resource "vault_database_secret_backend_role" "app" {
+  namespace           = vault_namespace.env.path_fq
   backend             = vault_mount.database.path
   name                = "netlix-readwrite"
   db_name             = vault_database_secret_backend_connection.postgres.name

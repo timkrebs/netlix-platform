@@ -1,12 +1,14 @@
 resource "vault_mount" "kv" {
-  path        = "secret/${var.environment}"
+  namespace   = vault_namespace.env.path_fq
+  path        = "secret"
   type        = "kv-v2"
   description = "Netlix ${var.environment} application secrets"
 }
 
 resource "vault_kv_secret_v2" "app_config" {
-  mount = vault_mount.kv.path
-  name  = "netlix/config"
+  namespace = vault_namespace.env.path_fq
+  mount     = vault_mount.kv.path
+  name      = "netlix/config"
 
   data_json = jsonencode({
     app_name    = "netlix"
