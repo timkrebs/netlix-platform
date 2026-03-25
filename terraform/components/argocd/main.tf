@@ -14,4 +14,32 @@ resource "helm_release" "argocd" {
     name  = "configs.params.server\\.insecure"
     value = "true"
   }
+
+  values = [yamlencode({
+    server = {
+      additionalApplications = [
+        {
+          name      = "netlix-app"
+          namespace = "argocd"
+          project   = "default"
+          source = {
+            repoURL        = var.gitops_repo_url
+            targetRevision  = "HEAD"
+            path           = "apps/netlix"
+          }
+          destination = {
+            server    = "https://kubernetes.default.svc"
+            namespace = var.target_namespace
+          }
+          syncPolicy = {
+            automated = {
+              prune    = true
+              selfHeal = true
+            }
+            syncOptions = ["CreateNamespace=true"]
+          }
+        }
+      ]
+    }
+  })]
 }

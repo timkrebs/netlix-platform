@@ -302,7 +302,6 @@ component "argocd" {
   }
 
   providers = {
-    helm       = provider.helm.eks
-    kubernetes = provider.kubernetes.eks
+    helm = provider.helm.eks
   }
 }
