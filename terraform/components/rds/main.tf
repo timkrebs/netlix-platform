@@ -26,6 +26,7 @@ module "rds" {
   storage_encrypted = true
   kms_key_id        = aws_kms_key.rds.arn
 
+  create_db_subnet_group = false
   db_subnet_group_name   = aws_db_subnet_group.this.name
   vpc_security_group_ids = [aws_security_group.rds.id]
   publicly_accessible    = false
