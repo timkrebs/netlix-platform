@@ -55,9 +55,13 @@ resource "aws_kms_key" "rds" {
 }
 
 resource "aws_db_subnet_group" "this" {
-  name       = "${var.project}-${var.environment}"
-  subnet_ids = var.private_subnet_ids
-  tags       = { component = "rds" }
+  name_prefix = "${var.project}-${var.environment}-"
+  subnet_ids  = var.private_subnet_ids
+  tags        = { component = "rds" }
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_security_group" "rds" {

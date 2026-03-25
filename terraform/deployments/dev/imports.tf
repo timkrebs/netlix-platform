@@ -18,6 +18,11 @@ import {
   id = "alias/${var.cluster_name}-eks"
 }
 
+import {
+  to = module.eks.module.eks.aws_eks_cluster.this[0]
+  id = var.cluster_name
+}
+
 # ─── RDS ────────────────────────────────────────────────────────────────────
 
 import {
@@ -25,10 +30,9 @@ import {
   id = "${var.project}-rds-monitoring"
 }
 
-import {
-  to = module.rds.aws_db_subnet_group.this
-  id = "${var.project}-${var.environment}"
-}
+# DB subnet group is NOT imported — the existing one belongs to a
+# different VPC.  The resource now uses name_prefix to avoid the
+# naming collision with the legacy subnet group.
 
 # ─── Vault Config ───────────────────────────────────────────────────────────
 
