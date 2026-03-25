@@ -38,7 +38,7 @@ module "rds" {
   maintenance_window      = "Mon:04:00-Mon:05:00"
 
   monitoring_interval                   = 60
-  monitoring_role_name                  = "${var.project}-rds-monitoring"
+  monitoring_role_name                  = "${var.project}-${var.environment}-rds-monitoring"
   create_monitoring_role                = true
   performance_insights_enabled          = true
   performance_insights_retention_period = 7

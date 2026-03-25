@@ -29,6 +29,8 @@ resource "hcp_hvn_route" "to_vpc" {
   hvn_route_id     = "${var.project}-${var.environment}-route"
   destination_cidr = var.vpc_cidr
   target_link      = hcp_aws_network_peering.vault_to_vpc.self_link
+
+  depends_on = [aws_vpc_peering_connection_accepter.vault]
 }
 
 # Add routes on the AWS side so private subnets can reach the HVN CIDR
