@@ -23,6 +23,8 @@ module "rds" {
   password = random_password.master.result
   port     = 5432
 
+  manage_master_user_password = false
+
   storage_encrypted = true
   kms_key_id        = aws_kms_key.rds.arn
 
