@@ -58,6 +58,7 @@ variable "hvn_id"               { type = string }
 
 variable "hcp_client_id" {
   type      = string
+  sensitive = true
   ephemeral = true
 }
 
