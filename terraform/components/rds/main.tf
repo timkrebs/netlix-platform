@@ -43,9 +43,9 @@ module "rds" {
   performance_insights_enabled          = true
   performance_insights_retention_period = 7
 
-  multi_az            = var.environment == "production"
-  deletion_protection = var.environment == "production"
-  skip_final_snapshot = var.environment != "production"
+  multi_az            = var.environment != "dev"
+  deletion_protection = var.environment != "dev"
+  skip_final_snapshot = var.environment == "dev"
 
   tags = { component = "rds" }
 }
