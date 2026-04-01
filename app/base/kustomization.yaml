@@ -8,7 +8,8 @@ resources:
   - ../api/deployment.yaml
   - ../api/pdb.yaml
   - ../api/hpa.yaml
-  - ../mesh/proxy-defaults.yaml
-  - ../mesh/intentions.yaml
+  # Consul service mesh — uncomment when Consul is deployed
+  # - ../mesh/proxy-defaults.yaml
+  # - ../mesh/intentions.yaml
   - resource-quota.yaml
   - vault-pki-secret.yaml
