@@ -1,0 +1,16 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: consul
+spec:
+  template:
+    metadata:
+      labels:
+        tags.datadoghq.com/env: "staging"
+    spec:
+      containers:
+        - name: api
+          env:
+            - name: DD_ENV
+              value: "staging"
