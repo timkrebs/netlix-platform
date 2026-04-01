@@ -12,3 +12,13 @@ variable "environment" {
   description = "Deployment environment (dev, staging)"
   type        = string
 }
+
+variable "domain" {
+  description = "Root domain (e.g. netlix.dev)"
+  type        = string
+}
+
+variable "certificate_arn" {
+  description = "ACM wildcard certificate ARN for ALB TLS termination"
+  type        = string
+}

@@ -8,11 +8,55 @@ resource "helm_release" "argocd" {
 
   set {
     name  = "server.service.type"
-    value = "LoadBalancer"
+    value = "ClusterIP"
   }
   set {
     name  = "configs.params.server\\.insecure"
     value = "true"
+  }
+  set {
+    name  = "server.ingress.enabled"
+    value = "true"
+  }
+  set {
+    name  = "server.ingress.ingressClassName"
+    value = "alb"
+  }
+  set {
+    name  = "server.ingress.hostname"
+    value = "argocd.${var.environment}.${var.domain}"
+  }
+  set {
+    name  = "server.ingress.annotations.alb\\.ingress\\.kubernetes\\.io/scheme"
+    value = "internet-facing"
+  }
+  set {
+    name  = "server.ingress.annotations.alb\\.ingress\\.kubernetes\\.io/target-type"
+    value = "ip"
+  }
+  set {
+    name  = "server.ingress.annotations.alb\\.ingress\\.kubernetes\\.io/certificate-arn"
+    value = var.certificate_arn
+  }
+  set {
+    name  = "server.ingress.annotations.alb\\.ingress\\.kubernetes\\.io/listen-ports"
+    value = "[{\"HTTPS\":443},{\"HTTP\":80}]"
+  }
+  set {
+    name  = "server.ingress.annotations.alb\\.ingress\\.kubernetes\\.io/ssl-redirect"
+    value = "443"
+  }
+  set {
+    name  = "server.ingress.annotations.alb\\.ingress\\.kubernetes\\.io/backend-protocol"
+    value = "HTTP"
+  }
+  set {
+    name  = "server.ingress.annotations.alb\\.ingress\\.kubernetes\\.io/healthcheck-path"
+    value = "/healthz"
+  }
+  set {
+    name  = "server.ingress.annotations.external-dns\\.alpha\\.kubernetes\\.io/hostname"
+    value = "argocd.${var.environment}.${var.domain}"
   }
 
   values = [yamlencode({
