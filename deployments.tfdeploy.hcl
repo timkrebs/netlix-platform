@@ -7,12 +7,12 @@ identity_token "aws" {
 # ─── Variable set stores ──────────────────────────────────────────────────
 
 store "varset" "netlix-vault" {
-  id       = "varset-DygE5qeNYGw62Gxs"
+  id       = "varset-4NoitsJtiV3MSVcg"
   category = "terraform"
 }
 
 store "varset" "netlix-hcp" {
-  id       = "varset-VcYpNGZZ2aHnMVL2"
+  id       = "varset-N9WxeF7Jw3G6LhdD"
   category = "terraform"
 }
 
