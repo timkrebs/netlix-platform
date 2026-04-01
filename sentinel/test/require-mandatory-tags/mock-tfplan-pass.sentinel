@@ -1,0 +1,42 @@
+resource_changes = {
+	"aws_vpc.main": {
+		"type":          "aws_vpc",
+		"provider_name": "registry.terraform.io/hashicorp/aws",
+		"mode":          "managed",
+		"change": {
+			"actions": ["create"],
+			"after": {
+				"tags": {
+					"environment": "dev",
+					"project":     "netlix",
+					"managed_by":  "terraform",
+				},
+				"tags_all": {
+					"environment": "dev",
+					"project":     "netlix",
+					"managed_by":  "terraform",
+				},
+			},
+		},
+	},
+	"aws_subnet.private": {
+		"type":          "aws_subnet",
+		"provider_name": "registry.terraform.io/hashicorp/aws",
+		"mode":          "managed",
+		"change": {
+			"actions": ["create"],
+			"after": {
+				"tags": {
+					"environment": "dev",
+					"project":     "netlix",
+					"managed_by":  "terraform",
+				},
+				"tags_all": {
+					"environment": "dev",
+					"project":     "netlix",
+					"managed_by":  "terraform",
+				},
+			},
+		},
+	},
+}

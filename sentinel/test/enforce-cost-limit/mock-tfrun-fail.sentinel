@@ -1,0 +1,5 @@
+cost_estimate = {
+	"proposed_monthly_cost": "2500.00",
+	"delta":                 "500.00",
+	"prior_monthly_cost":    "2000.00",
+}

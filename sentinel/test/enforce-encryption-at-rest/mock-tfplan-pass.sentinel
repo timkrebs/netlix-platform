@@ -1,0 +1,40 @@
+resource_changes = {
+	"aws_db_instance.main": {
+		"type":          "aws_db_instance",
+		"provider_name": "registry.terraform.io/hashicorp/aws",
+		"mode":          "managed",
+		"change": {
+			"actions": ["create"],
+			"after": {
+				"storage_encrypted": true,
+			},
+		},
+	},
+	"aws_ebs_volume.data": {
+		"type":          "aws_ebs_volume",
+		"provider_name": "registry.terraform.io/hashicorp/aws",
+		"mode":          "managed",
+		"change": {
+			"actions": ["create"],
+			"after": {
+				"encrypted": true,
+			},
+		},
+	},
+	"aws_eks_cluster.main": {
+		"type":          "aws_eks_cluster",
+		"provider_name": "registry.terraform.io/hashicorp/aws",
+		"mode":          "managed",
+		"change": {
+			"actions": ["create"],
+			"after": {
+				"encryption_config": [
+					{
+						"provider": [{"key_arn": "arn:aws:kms:eu-central-1:123456789012:key/example"}],
+						"resources": ["secrets"],
+					},
+				],
+			},
+		},
+	},
+}

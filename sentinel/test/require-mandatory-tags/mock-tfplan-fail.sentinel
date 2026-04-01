@@ -1,0 +1,18 @@
+resource_changes = {
+	"aws_vpc.main": {
+		"type":          "aws_vpc",
+		"provider_name": "registry.terraform.io/hashicorp/aws",
+		"mode":          "managed",
+		"change": {
+			"actions": ["create"],
+			"after": {
+				"tags": {
+					"environment": "dev",
+				},
+				"tags_all": {
+					"environment": "dev",
+				},
+			},
+		},
+	},
+}

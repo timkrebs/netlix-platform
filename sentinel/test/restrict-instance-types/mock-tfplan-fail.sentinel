@@ -1,0 +1,24 @@
+resource_changes = {
+	"aws_instance.app": {
+		"type":          "aws_instance",
+		"provider_name": "registry.terraform.io/hashicorp/aws",
+		"mode":          "managed",
+		"change": {
+			"actions": ["create"],
+			"after": {
+				"instance_type": "p4d.24xlarge",
+			},
+		},
+	},
+	"aws_db_instance.main": {
+		"type":          "aws_db_instance",
+		"provider_name": "registry.terraform.io/hashicorp/aws",
+		"mode":          "managed",
+		"change": {
+			"actions": ["create"],
+			"after": {
+				"instance_class": "db.x2g.16xlarge",
+			},
+		},
+	},
+}
