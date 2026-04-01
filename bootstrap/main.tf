@@ -53,7 +53,7 @@ resource "aws_iam_role" "tfc_dev" {
 
 resource "aws_iam_role_policy_attachment" "tfc_dev" {
   role       = aws_iam_role.tfc_dev.name
-  policy_arn = "arn:aws:iam::policy/AdministratorAccess"
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
 resource "aws_iam_role" "tfc_staging" {
@@ -75,7 +75,7 @@ resource "aws_iam_role" "tfc_staging" {
 
 resource "aws_iam_role_policy_attachment" "tfc_staging" {
   role       = aws_iam_role.tfc_staging.name
-  policy_arn = "arn:aws:iam::policy/AdministratorAccess"
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
 output "dev_role_arn"     { value = aws_iam_role.tfc_dev.arn }
