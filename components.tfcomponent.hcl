@@ -155,8 +155,9 @@ component "argocd" {
   source = "./terraform/components/argocd"
 
   inputs = {
-    gitops_repo_url  = "https://github.com/${var.github_org}/netlix-gitops.git"
-    target_namespace = "netlix"
+    gitops_repo_url  = "https://github.com/${var.github_org}/netlix-platform.git"
+    target_namespace = "consul"
+    environment      = var.environment
   }
 
   providers = {

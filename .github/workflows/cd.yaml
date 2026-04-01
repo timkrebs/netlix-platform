@@ -1,0 +1,75 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+    paths: ['app/server/**']
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/web
+
+jobs:
+  build-and-push:
+    name: Build & Push to GHCR
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+      image_uri: ${{ steps.meta.outputs.uri }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and tag image
+        id: meta
+        run: |
+          TAG="${{ github.sha }}"
+          URI="${REGISTRY}/${IMAGE_NAME}:${TAG}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "uri=${URI}" >> "$GITHUB_OUTPUT"
+
+          docker build \
+            -t "${URI}" \
+            -t "${REGISTRY}/${IMAGE_NAME}:latest" \
+            app/server/
+
+      - name: Push to GHCR
+        run: |
+          docker push "${{ steps.meta.outputs.uri }}"
+          docker push "${REGISTRY}/${IMAGE_NAME}:latest"
+
+  update-manifests:
+    name: Update Kustomize manifests
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Kustomize
+        uses: imranismail/setup-kustomize@v2
+
+      - name: Update dev overlay image tag
+        run: |
+          cd app/overlays/dev
+          kustomize edit set image "netlix-web=${REGISTRY}/${IMAGE_NAME}:${{ needs.build-and-push.outputs.image_tag }}"
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add app/overlays/
+          git diff --staged --quiet && echo "No changes to commit" && exit 0
+          git commit -m "cd: update image to ${{ needs.build-and-push.outputs.image_tag }}"
+          git push
