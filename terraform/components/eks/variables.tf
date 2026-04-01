@@ -38,6 +38,12 @@ variable "node_max_size" {
   type        = number
 }
 
+variable "cluster_endpoint_public_access_cidrs" {
+  description = "CIDRs allowed to reach the EKS public endpoint (empty = disabled)"
+  type        = list(string)
+  default     = []
+}
+
 variable "environment" {
   description = "Environment name"
   type        = string

@@ -24,7 +24,7 @@ resource "helm_release" "argocd" {
           project   = "default"
           source = {
             repoURL        = var.gitops_repo_url
-            targetRevision  = "HEAD"
+            targetRevision = "HEAD"
             path           = "apps/netlix"
           }
           destination = {
