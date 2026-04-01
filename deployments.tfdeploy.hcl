@@ -30,7 +30,7 @@ deployment "dev" {
     vault_cluster_id   = "netlix-vault"
     vault_address      = "https://netlix-vault-public-vault-7ebc141d.dffa8084.z1.hashicorp.cloud:8200"
     vault_token        = store.varset.netlix-vault.vault_token
-    hvn_id             = "netlix-vault"
+    hvn_id             = "hvn"
 
     # Networking
     vpc_cidr = "10.0.0.0/16"
@@ -77,7 +77,7 @@ deployment "staging" {
     vault_cluster_id   = "netlix-vault"
     vault_address      = "https://netlix-vault-public-vault-7ebc141d.dffa8084.z1.hashicorp.cloud:8200"
     vault_token        = store.varset.netlix-vault.vault_token
-    hvn_id             = "netlix-vault"
+    hvn_id             = "hvn"
 
     # Networking
     vpc_cidr = "10.1.0.0/16"
