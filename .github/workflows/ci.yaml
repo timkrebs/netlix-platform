@@ -54,6 +54,8 @@ jobs:
           - hvn-peering
           - vault-config
           - vso
+          - alb-controller
+          - external-dns
           - argocd
     steps:
       - uses: actions/checkout@v4
