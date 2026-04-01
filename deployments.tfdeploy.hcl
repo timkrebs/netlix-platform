@@ -46,6 +46,7 @@ deployment "dev" {
     node_desired_size   = 3
     node_min_size       = 2
     node_max_size       = 5
+    cluster_endpoint_public_access_cidrs = ["0.0.0.0/0"] # dev: open for debugging — restrict in staging/prod
 
     # RDS
     db_instance_class = "db.t4g.medium"
@@ -93,6 +94,7 @@ deployment "staging" {
     node_desired_size   = 3
     node_min_size       = 3
     node_max_size       = 6
+    cluster_endpoint_public_access_cidrs = [] # staging: private endpoint only
 
     # RDS
     db_instance_class = "db.m6i.large"

@@ -44,8 +44,9 @@ component "eks" {
     node_desired_size   = var.node_desired_size
     node_min_size       = var.node_min_size
     node_max_size       = var.node_max_size
-    environment         = var.environment
-    project             = var.project
+    environment                          = var.environment
+    project                              = var.project
+    cluster_endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
   }
 
   providers = {

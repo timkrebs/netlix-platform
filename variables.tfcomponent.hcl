@@ -90,6 +90,12 @@ variable "node_max_size" {
   type = number
 }
 
+variable "cluster_endpoint_public_access_cidrs" {
+  type        = list(string)
+  description = "CIDRs allowed to reach EKS API. Empty list disables public access."
+  default     = []
+}
+
 # ─── RDS ───────────────────────────────────────────────────────────────────
 
 variable "db_instance_class" {
