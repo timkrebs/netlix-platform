@@ -5,7 +5,10 @@ metadata:
   namespace: "datadog"
 spec:
   global:
-    clusterName: "netlix-eks-C6BMp9qv"
+    # Replace CLUSTER_NAME with actual EKS cluster name per environment:
+    #   dev:     netlix-dev
+    #   staging: netlix-staging
+    clusterName: "CLUSTER_NAME"
     site: "datadoghq.eu"
     credentials:
       apiSecret:
@@ -16,8 +19,8 @@ spec:
     podAnnotationsAsTags:
       consul.hashicorp.com/connect-service: consul_service
     tags:
-      - cluster:netlix-eks-C6BMp9qv
-      - env:dev
+      - cluster:CLUSTER_NAME
+      - env:ENVIRONMENT
   features:
     admissionController:
       enabled: true

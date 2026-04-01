@@ -7,10 +7,9 @@ metadata:
     app.kubernetes.io/managed-by: kubectl
 ---
 # ── Datadog API key secret ────────────────────────────────────────────────────
-# Get your API key from: https://app.datadoghq.eu/organization-settings/api-keys
-# Replace <YOUR_DD_API_KEY> then apply this file.
-# Never commit the real key — use `kubectl create secret` or Vault injection
-# in production.
+# Never commit the real key. Use one of:
+#   kubectl create secret generic datadog-secret -n datadog --from-literal=api-key=<KEY>
+#   Vault Secrets Operator (VSO) VaultStaticSecret to sync from Vault KV
 apiVersion: v1
 kind: Secret
 metadata:
