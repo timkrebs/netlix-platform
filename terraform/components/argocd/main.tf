@@ -16,6 +16,11 @@ resource "helm_release" "argocd" {
   }
 
   values = [yamlencode({
+    configs = {
+      cm = {
+        "kustomize.buildOptions" = "--load-restrictor LoadRestrictionsNone"
+      }
+    }
     server = {
       ingress = {
         enabled          = true
