@@ -25,7 +25,7 @@ resource "helm_release" "argocd" {
           source = {
             repoURL        = var.gitops_repo_url
             targetRevision = "HEAD"
-            path           = "apps/netlix"
+            path           = "app/overlays/${var.environment}"
           }
           destination = {
             server    = "https://kubernetes.default.svc"

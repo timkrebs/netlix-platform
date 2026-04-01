@@ -2,29 +2,15 @@ kind: "DatadogAgent"
 apiVersion: "datadoghq.com/v2alpha1"
 metadata:
   name: "datadog"
-  namespace: "datadog"
 spec:
   global:
-    # Replace CLUSTER_NAME with actual EKS cluster name per environment:
-    #   dev:     netlix-dev
-    #   staging: netlix-staging
-    clusterName: "CLUSTER_NAME"
+    clusterName: "netlix-dev"
     site: "datadoghq.eu"
     credentials:
       apiSecret:
         secretName: "datadog-secret"
         keyName: "api-key"
-    podLabelsAsTags:
-      app: "app"
-    podAnnotationsAsTags:
-      consul.hashicorp.com/connect-service: consul_service
-    tags:
-      - cluster:CLUSTER_NAME
-      - env:ENVIRONMENT
   features:
-    admissionController:
-      enabled: true
-      mutateUnlabelled: false
     clusterChecks:
       enabled: true
     orchestratorExplorer:
@@ -32,47 +18,31 @@ spec:
     apm:
       instrumentation:
         enabled: true
-        libVersions:
-          java: "1"
-          python: "4"
-          js: "5"
-          dotnet: "3"
-          ruby: "2"
-          php: "1"
+        targets:
+          - name: "default-target"
+            ddTraceVersions:
+              java: "1"
+              python: "4"
+              js: "5"
+              php: "1"
+              dotnet: "3"
+              ruby: "2"
+            ddTraceConfigs:
+              - name: "DD_RUM_ENABLED"
+                value: "true"
+              - name: "DD_RUM_APPLICATION_ID"
+                value: "c4e21dc1-c7c9-4d37-ae40-ddd23c33c64a"
+              - name: "DD_RUM_CLIENT_TOKEN"
+                value: "pub9bfc33c87adbaf3c3a50f7be453810b6"
+              - name: "DD_RUM_REMOTE_CONFIGURATION_ID"
+                value: "e5d1139e-2c4c-48b1-b7e4-078d43a4d4f0"
+              - name: "DD_RUM_SITE"
+                value: "datadoghq.eu"
     logCollection:
       enabled: true
       containerCollectAll: true
-      containerCollectUsingFiles: true
+    autoscaling:
+      workload:
+        enabled: true
     eventCollection:
-      collectKubernetesEvents: true
-    liveProcessCollection:
-      enabled: true
-      scrubProcessArguments: true
-    liveContainerCollection:
-      enabled: true
-    asm:
-      threats:
-        enabled: true
-    cws:
-      enabled: true
-    cspm:
-      enabled: true
-    sbom:
-      enabled: true
-      containerImage:
-        enabled: true
-      host:
-        enabled: true
-    npm:
-      enabled: true
-      collectDNSStats: true
-    usm:
-      enabled: true
-    prometheusScrape:
-      enabled: true
-      enableServiceEndpoints: false
-    helmCheck:
-      enabled: true
-      collectEvents: true
-    kubeStateMetricsCore:
-      enabled: true
+      unbundleEvents: true
