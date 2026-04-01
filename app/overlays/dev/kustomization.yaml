@@ -2,27 +2,27 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - ../../base
+- ../../base
 
 images:
-  - name: netlix-web
-    newName: ghcr.io/timkrebs/netlix-platform/web
-    newTag: latest
+- name: netlix-web
+  newName: ghcr.io/timkrebs/netlix-platform/web
+  newTag: 9a837bfe8e12f0144dce0147d08586afcc0c6598
 
 patches:
-  - path: patch-web-ingress.yaml
-    target:
-      kind: Ingress
-      name: web
-  - path: patch-web-env.yaml
-    target:
-      kind: Deployment
-      name: web
-  - path: patch-api-env.yaml
-    target:
-      kind: Deployment
-      name: api
-  - path: patch-vault-pki.yaml
-    target:
-      kind: VaultPKISecret
-      name: web-tls
+- path: patch-web-ingress.yaml
+  target:
+    kind: Ingress
+    name: web
+- path: patch-web-env.yaml
+  target:
+    kind: Deployment
+    name: web
+- path: patch-api-env.yaml
+  target:
+    kind: Deployment
+    name: api
+- path: patch-vault-pki.yaml
+  target:
+    kind: VaultPKISecret
+    name: web-tls
