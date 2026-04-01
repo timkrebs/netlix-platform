@@ -14,53 +14,24 @@ resource "helm_release" "argocd" {
     name  = "configs.params.server\\.insecure"
     value = "true"
   }
-  set {
-    name  = "server.ingress.enabled"
-    value = "true"
-  }
-  set {
-    name  = "server.ingress.ingressClassName"
-    value = "alb"
-  }
-  set {
-    name  = "server.ingress.hostname"
-    value = "argocd.${var.environment}.${var.domain}"
-  }
-  set {
-    name  = "server.ingress.annotations.alb\\.ingress\\.kubernetes\\.io/scheme"
-    value = "internet-facing"
-  }
-  set {
-    name  = "server.ingress.annotations.alb\\.ingress\\.kubernetes\\.io/target-type"
-    value = "ip"
-  }
-  set {
-    name  = "server.ingress.annotations.alb\\.ingress\\.kubernetes\\.io/certificate-arn"
-    value = var.certificate_arn
-  }
-  set {
-    name  = "server.ingress.annotations.alb\\.ingress\\.kubernetes\\.io/listen-ports"
-    value = "[{\"HTTPS\":443},{\"HTTP\":80}]"
-  }
-  set {
-    name  = "server.ingress.annotations.alb\\.ingress\\.kubernetes\\.io/ssl-redirect"
-    value = "443"
-  }
-  set {
-    name  = "server.ingress.annotations.alb\\.ingress\\.kubernetes\\.io/backend-protocol"
-    value = "HTTP"
-  }
-  set {
-    name  = "server.ingress.annotations.alb\\.ingress\\.kubernetes\\.io/healthcheck-path"
-    value = "/healthz"
-  }
-  set {
-    name  = "server.ingress.annotations.external-dns\\.alpha\\.kubernetes\\.io/hostname"
-    value = "argocd.${var.environment}.${var.domain}"
-  }
 
   values = [yamlencode({
     server = {
+      ingress = {
+        enabled          = true
+        ingressClassName = "alb"
+        hostname         = "argocd.${var.environment}.${var.domain}"
+        annotations = {
+          "alb.ingress.kubernetes.io/scheme"           = "internet-facing"
+          "alb.ingress.kubernetes.io/target-type"       = "ip"
+          "alb.ingress.kubernetes.io/certificate-arn"   = var.certificate_arn
+          "alb.ingress.kubernetes.io/listen-ports"      = "[{\"HTTPS\":443},{\"HTTP\":80}]"
+          "alb.ingress.kubernetes.io/ssl-redirect"      = "443"
+          "alb.ingress.kubernetes.io/backend-protocol"  = "HTTP"
+          "alb.ingress.kubernetes.io/healthcheck-path"  = "/healthz"
+          "external-dns.alpha.kubernetes.io/hostname"   = "argocd.${var.environment}.${var.domain}"
+        }
+      }
       additionalApplications = [
         {
           name      = "netlix-app"
