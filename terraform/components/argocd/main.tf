@@ -23,13 +23,13 @@ resource "helm_release" "argocd" {
         hostname         = "argocd.${var.environment}.${var.domain}"
         annotations = {
           "alb.ingress.kubernetes.io/scheme"           = "internet-facing"
-          "alb.ingress.kubernetes.io/target-type"       = "ip"
-          "alb.ingress.kubernetes.io/certificate-arn"   = var.certificate_arn
-          "alb.ingress.kubernetes.io/listen-ports"      = "[{\"HTTPS\":443},{\"HTTP\":80}]"
-          "alb.ingress.kubernetes.io/ssl-redirect"      = "443"
-          "alb.ingress.kubernetes.io/backend-protocol"  = "HTTP"
-          "alb.ingress.kubernetes.io/healthcheck-path"  = "/healthz"
-          "external-dns.alpha.kubernetes.io/hostname"   = "argocd.${var.environment}.${var.domain}"
+          "alb.ingress.kubernetes.io/target-type"      = "ip"
+          "alb.ingress.kubernetes.io/certificate-arn"  = var.certificate_arn
+          "alb.ingress.kubernetes.io/listen-ports"     = "[{\"HTTPS\":443},{\"HTTP\":80}]"
+          "alb.ingress.kubernetes.io/ssl-redirect"     = "443"
+          "alb.ingress.kubernetes.io/backend-protocol" = "HTTP"
+          "alb.ingress.kubernetes.io/healthcheck-path" = "/healthz"
+          "external-dns.alpha.kubernetes.io/hostname"  = "argocd.${var.environment}.${var.domain}"
         }
       }
       additionalApplications = [
