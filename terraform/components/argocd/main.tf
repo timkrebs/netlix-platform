@@ -32,11 +32,17 @@ resource "helm_release" "argocd" {
           "external-dns.alpha.kubernetes.io/hostname"  = "argocd.${var.environment}.${var.domain}"
         }
       }
-      additionalApplications = [
-        {
+    }
+    extraObjects = [
+      {
+        apiVersion = "argoproj.io/v1alpha1"
+        kind       = "Application"
+        metadata = {
           name      = "netlix-app"
           namespace = "argocd"
-          project   = "default"
+        }
+        spec = {
+          project = "default"
           source = {
             repoURL        = var.gitops_repo_url
             targetRevision = "HEAD"
@@ -54,7 +60,7 @@ resource "helm_release" "argocd" {
             syncOptions = ["CreateNamespace=true"]
           }
         }
-      ]
-    }
+      }
+    ]
   })]
 }
