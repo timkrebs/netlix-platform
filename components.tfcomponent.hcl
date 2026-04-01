@@ -47,6 +47,7 @@ component "eks" {
     environment                          = var.environment
     project                              = var.project
     cluster_endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
+    route53_zone_arns                    = [component.dns.zone_arn]
   }
 
   providers = {
@@ -149,6 +150,39 @@ component "vso" {
   }
 }
 
+# ─── AWS Load Balancer Controller ─────────────────────────────────────────
+
+component "alb_controller" {
+  source = "./terraform/components/alb-controller"
+
+  inputs = {
+    cluster_name           = component.eks.cluster_name
+    lb_controller_role_arn = component.eks.lb_controller_role_arn
+    vpc_id                 = component.networking.vpc_id
+    aws_region             = var.aws_region
+  }
+
+  providers = {
+    helm = provider.helm.eks
+  }
+}
+
+# ─── ExternalDNS (Route53 record automation) ──────────────────────────────
+
+component "external_dns" {
+  source = "./terraform/components/external-dns"
+
+  inputs = {
+    cluster_name          = component.eks.cluster_name
+    domain                = var.base_domain
+    external_dns_role_arn = component.eks.external_dns_role_arn
+  }
+
+  providers = {
+    helm = provider.helm.eks
+  }
+}
+
 # ─── ArgoCD ───────────────────────────────────────────────────────────────
 
 component "argocd" {
@@ -158,6 +192,8 @@ component "argocd" {
     gitops_repo_url  = "https://github.com/${var.github_org}/netlix-platform.git"
     target_namespace = "consul"
     environment      = var.environment
+    domain           = var.base_domain
+    certificate_arn  = component.dns.certificate_arn
   }
 
   providers = {
