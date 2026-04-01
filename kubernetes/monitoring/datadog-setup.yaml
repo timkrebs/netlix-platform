@@ -1,0 +1,33 @@
+# ── Datadog namespace ─────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: datadog
+  labels:
+    app.kubernetes.io/managed-by: kubectl
+---
+# ── Datadog API key secret ────────────────────────────────────────────────────
+# Get your API key from: https://app.datadoghq.eu/organization-settings/api-keys
+# Replace <YOUR_DD_API_KEY> then apply this file.
+# Never commit the real key — use `kubectl create secret` or Vault injection
+# in production.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: datadog-secret
+  namespace: datadog
+type: Opaque
+stringData:
+  api-key: "<YOUR_DD_API_KEY>"
+---
+# ── Label the consul namespace ────────────────────────────────────────────────
+# The Datadog Admission Controller needs this label to identify which
+# namespaces it should mutate. It injects DD_AGENT_HOST, DD_ENTITY_ID,
+# and the UST env vars (DD_ENV / DD_SERVICE / DD_VERSION from
+# tags.datadoghq.com/* pod labels) into matching pods automatically.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: consul
+  labels:
+    admission.datadoghq.com/enabled: "true"

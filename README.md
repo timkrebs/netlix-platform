@@ -1,111 +1,164 @@
 # Netlix Platform
 
-**Netlix** is a production-grade reference architecture showcasing HashiCorp technologies in a real-world AWS deployment. It simulates a SaaS startup running its platform on Kubernetes, demonstrating the complete Terraform Cloud workflow — from VCS-driven runs through Sentinel policy checks and cost estimation to automated infrastructure provisioning — integrated with HCP Vault Dedicated for secrets management and Kubernetes-native delivery via VSO.
+**Netlix** is a production-grade reference architecture showcasing HashiCorp technologies in a real-world AWS deployment. It simulates a SaaS startup running its platform on Kubernetes, demonstrating the complete HCP Terraform Stacks workflow — from VCS-driven runs through Sentinel policy checks and cost estimation to automated multi-environment infrastructure provisioning — integrated with HCP Vault Dedicated for secrets management, dynamic database credentials, and PKI certificate issuance.
 
 **Domain:** [netlix.dev](https://netlix.dev)
-
-## Architecture
-
-```
-Developer → git push → GitHub → TFC Stacks → Sentinel → AWS
-                                                          ├── VPC + Networking
-                                                          ├── EKS Cluster
-                                                          ├── RDS PostgreSQL
-                                                          └── HCP Vault → VSO → ArgoCD → App
-```
-
-### Component Dependency Graph
-
-```
-networking ─────────┬──► eks ──────────┬──► vso ──► argocd
-                    │                  │
-                    └──► rds ──────────┘
-                                       │
-                           vault_config ┘
-```
 
 ## Technology Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Infrastructure as Code | Terraform Cloud (Stacks) |
+| Infrastructure as Code | HCP Terraform (Stacks) |
 | Policy as Code | Sentinel |
 | Secrets Management | HCP Vault Dedicated |
 | Secrets Delivery | Vault Secrets Operator (VSO) |
 | GitOps | ArgoCD |
 | Container Orchestration | Amazon EKS |
 | Database | Amazon RDS (PostgreSQL) |
+| Observability | Datadog |
 | CI/CD | GitHub Actions |
-| Application | Go |
+
+## Architecture
+
+```
+                    ┌─────────────────────────────────────────────────┐
+                    │               HCP Terraform Stack               │
+                    │                                                 │
+                    │  Variable Sets:                                 │
+                    │    netlix-vault  (Vault admin token)            │
+                    │    netlix-hcp    (HCP service principal)        │
+                    │                                                 │
+                    │  Identity Tokens:                               │
+                    │    aws (OIDC workload identity — no static keys)│
+                    │                                                 │
+                    │  Components:           Dependency Graph:        │
+                    │    dns             ──── Route53 + ACM           │
+                    │    networking      ──── VPC + subnets + NAT     │
+                    │    eks            ◄──── EKS + IRSA + KMS       │
+                    │    hvn_peering    ◄──── HCP Vault ↔ VPC        │
+                    │    rds            ◄──── PostgreSQL + KMS        │
+                    │    vault_config   ◄──── PKI, K8s auth, DB, KV  │
+                    │    vso            ◄──── Vault Secrets Operator  │
+                    │    argocd         ◄──── GitOps delivery         │
+                    │                                                 │
+                    │  Deployments:                                   │
+                    │    dev     (10.0.0.0/16, m6i.large, t4g.medium)│
+                    │    staging (10.1.0.0/16, m6i.large, m6i.large) │
+                    └─────────────────────────────────────────────────┘
+```
 
 ## Repository Structure
 
 ```
 netlix-platform/
-├── terraform/
-│   ├── stacks/deployments/          # Stack deployment config
-│   ├── components/
-│   │   ├── networking/              # VPC, subnets, NAT, flow logs
-│   │   ├── eks/                     # EKS cluster, IRSA roles
-│   │   ├── rds/                     # PostgreSQL, encryption, security groups
-│   │   ├── vault-config/            # PKI, KV, DB engine, K8s auth, policies
-│   │   ├── vso/                     # Vault Secrets Operator (Helm)
-│   │   └── argocd/                  # ArgoCD + Application manifest
-│   └── modules/tags/                # Shared tagging module
-├── sentinel/
-│   ├── policies/                    # 6 Sentinel policies
-│   └── test/                        # Policy test fixtures
-├── app/                             # Go web application
-├── bootstrap/                       # AWS OIDC trust (run once)
-└── .github/workflows/               # CI, release, Sentinel tests
+├── variables.tfcomponent.hcl       # Stack-level input variables
+├── providers.tfcomponent.hcl       # Provider configurations (OIDC, Vault, Helm, K8s)
+├── components.tfcomponent.hcl      # 8 component definitions + dependency wiring
+├── outputs.tfcomponent.hcl         # Stack outputs
+├── deployments.tfdeploy.hcl        # dev + staging deployment configs
+├── .terraform-version              # Terraform 1.14.5
+│
+├── terraform/components/
+│   ├── networking/                 # VPC, subnets, NAT, flow logs
+│   ├── dns/                        # Route53 hosted zone, ACM wildcard cert
+│   ├── eks/                        # EKS cluster, IRSA, KMS encryption
+│   ├── rds/                        # PostgreSQL, KMS, monitoring, perf insights
+│   ├── hvn-peering/                # HCP Vault HVN ↔ AWS VPC peering
+│   ├── vault-config/               # PKI CAs, K8s auth, DB engine, KV, policies
+│   ├── vso/                        # Vault Secrets Operator (Helm)
+│   └── argocd/                     # ArgoCD + GitOps Application
+│
+├── bootstrap/                      # One-time AWS OIDC trust setup
+├── sentinel/                       # 6 Sentinel policies + test fixtures
+│   ├── policies/
+│   └── test/
+├── app/                            # Kubernetes manifests
+│   ├── web/                        # Web frontend (fake-service)
+│   ├── api/                        # Backend API (fake-service)
+│   └── mesh/                       # Consul intentions + proxy defaults
+├── kubernetes/
+│   ├── helm/                       # Helm values (Consul, osquery)
+│   └── monitoring/                 # Datadog agent + setup
+└── .github/workflows/              # CI, release, Sentinel tests
 ```
 
 ## Prerequisites
 
-- [Terraform CLI](https://developer.hashicorp.com/terraform/install) >= 1.9
-- [Terraform Cloud](https://app.terraform.io) organization with Stacks enabled
+- [Terraform CLI](https://developer.hashicorp.com/terraform/install) >= 1.14.5
+- [HCP Terraform](https://app.terraform.io) organization with Stacks enabled
 - [HCP](https://portal.cloud.hashicorp.com) account with Vault Dedicated cluster
 - AWS account with IAM permissions
-- GitHub repository with Actions enabled
-- Go 1.22+ (for local app development)
+- GitHub repository connected to HCP Terraform
 
 ## Getting Started
 
-### Phase 0 — Bootstrap
+### Phase 0 — Bootstrap AWS OIDC Trust
 
-1. **TFC organization** `tim-krebs-org` with Stacks + Cost Estimation enabled
-2. **Set up HCP Vault Dedicated** cluster `netlix-vault` in project `netlix`
-3. **Bootstrap AWS OIDC trust:**
-   ```bash
-   cd bootstrap
-   terraform init
-   terraform apply
-   ```
-4. **Connect GitHub** via TFC GitHub App
+This creates the IAM OIDC provider and roles that allow HCP Terraform Stacks to authenticate
+to AWS without static credentials.
 
-### Phase 1 — Governance
+```bash
+cd bootstrap
+terraform init
+terraform apply
+```
 
-1. Push Sentinel policies to `sentinel/` directory
-2. Create TFC policy set `netlix-sentinel` pointing to `sentinel/` path
-3. Verify PR flow shows speculative plan + Sentinel checks
+This creates:
+- IAM OIDC provider for `app.terraform.io`
+- `tfc-netlix-dev` IAM role (scoped to dev Stack deployment)
+- `tfc-netlix-staging` IAM role (scoped to staging Stack deployment)
 
-### Phase 2 — Core Infrastructure
+### Phase 1 — HCP Terraform Setup
 
-1. Configure TFC Stack `netlix-dev` with VCS connection
-2. Set variable sets: `netlix-aws`, `netlix-hcp`, `netlix-tags`
-3. Push to `main` — TFC deploys networking → EKS → RDS
+1. Create organization `tim-krebs-org` in HCP Terraform
+2. Connect GitHub repository via the HCP Terraform GitHub App
+3. Create **variable sets**:
 
-### Phase 3 — Vault + VSO
+   | Variable Set | Variables | Type |
+   |-------------|-----------|------|
+   | `netlix-vault` | `vault_token` | Terraform (sensitive) |
+   | `netlix-hcp` | `hcp_client_id`, `hcp_client_secret` | Terraform (sensitive) |
 
-1. TFC deploys `vault-config` component (PKI, KV, DB engine, K8s auth)
-2. TFC deploys `vso` component (Helm chart with default connection)
-3. Set up [netlix-gitops](https://github.com/timkrebs/netlix-gitops) repo with VSO CRDs
+4. Create **Stack** `netlix` with VCS connection pointing to this repository
+5. Create **policy set** `netlix-sentinel` pointing to `sentinel/` path
 
-### Phase 4 — Application
+### Phase 2 — Deploy
 
-1. Build and push app image: `git tag v0.1.0 && git push --tags`
-2. ArgoCD syncs from gitops repo
-3. App live at `app.netlix.dev` with Vault-managed TLS and dynamic DB credentials
+Push to `main` and HCP Terraform will:
+
+1. **Plan:** Resolve all 8 components in dependency order, run parallel plans
+2. **Cost estimation:** Calculate monthly cost delta
+3. **Sentinel:** Evaluate all 6 policies against the plan
+4. **Apply:** Deploy dev and staging environments
+
+### Phase 3 — Application Deployment
+
+Once infrastructure is up, apply Kubernetes manifests:
+
+```bash
+aws eks update-kubeconfig --region eu-central-1 --name netlix-dev
+
+kubectl apply -f app/mesh/proxy-defaults.yaml
+kubectl apply -f app/mesh/intentions.yaml
+kubectl apply -f app/web/deployment.yaml
+kubectl apply -f app/api/deployment.yaml
+```
+
+ArgoCD will sync additional applications from the [netlix-gitops](https://github.com/timkrebs/netlix-gitops) repository.
+
+## Component Dependency Graph
+
+```
+dns                                    (no dependencies)
+networking                             (no dependencies)
+    ├── eks                            (needs VPC, subnets)
+    │   ├── rds                        (needs VPC, subnets, EKS SG)
+    │   ├── vault_config               (needs EKS endpoint, OIDC, RDS creds)
+    │   │   └── vso                    (needs Vault addr, namespace, auth path)
+    │   └── argocd                     (needs EKS via Helm provider)
+    └── hvn_peering                    (needs VPC ID, route tables)
+            └── rds                    (needs HVN CIDR for SG rules)
+```
 
 ## Sentinel Policies
 
@@ -120,21 +173,25 @@ netlix-platform/
 
 ## Demo Scenarios
 
-1. **Happy path** — Push to `main` → Stacks plan → Cost estimation → Sentinel green → Auto-apply → ArgoCD sync → App live
+1. **Happy path** — Push to `main` → Stacks plan → Cost estimation → Sentinel green → Auto-apply → App live
 2. **Sentinel blocks** — PR with untagged resources → Policy fails → GitHub status red → Fix and re-push
 3. **Cost governance** — Upsize instances → Cost limit exceeded → Admin review required
 4. **Secrets rotation** — PKI cert auto-renews via VSO → DB creds rotate at 67% TTL → Zero-downtime rolling restart
+5. **Multi-environment** — dev and staging deploy from the same Stack with different inputs
 
-## VCS-Driven Workflow
+## Credential Management
 
-1. Developer pushes to `terraform/` on `main`
-2. GitHub webhook notifies TFC
-3. TFC queues a run for Stack `netlix-dev`
-4. **Plan:** Stacks resolves components, runs parallel plans
-5. **Cost estimation:** Calculates monthly delta
-6. **Sentinel:** Evaluates all 6 policies
-7. **Apply:** Auto-apply (dev) or manual confirm (staging)
+All credentials use OIDC workload identity or HCP Terraform variable sets — **no static keys in code**.
+
+| Credential | Source | Delivery |
+|-----------|--------|----------|
+| AWS access | OIDC identity token | `assume_role_with_web_identity` |
+| HCP service principal | Variable set `netlix-hcp` | Ephemeral store reference |
+| Vault admin token | Variable set `netlix-vault` | Ephemeral store reference |
+| GitHub PAT | Deployment input | Sensitive variable |
+| DB credentials | Vault database engine | Dynamic secrets via VSO |
+| TLS certificates | Vault PKI engine | Auto-rotated via VSO |
 
 ## License
 
-Private — HashiCorp internal demo platform.
+Private — HashiCorp demo platform.

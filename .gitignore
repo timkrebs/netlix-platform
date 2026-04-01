@@ -1,15 +1,27 @@
 # Terraform
-*.tfstate
-*.tfstate.backup
 *.tfplan
-.terraform/
-# Keep root lock file for Stacks, ignore component lock files
-terraform/components/**/.terraform.lock.hcl
 crash.log
 override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+
+# Terraform state (HCP Terraform manages state)
+*.tfstate
+*.tfstate.backup
+
+# Terraform working directories
+**/.terraform/
+
+# Keep root lock file for Stacks, ignore component lock files
+terraform/components/**/.terraform.lock.hcl
+
+# Terraform variables (Stacks uses deployments.tfdeploy.hcl)
+*.tfvars
+!*.tfvars.example
+
+# Debug artifacts
+certs.txt
 
 # Go
 app/netlix
@@ -32,9 +44,13 @@ vendor/
 # OS
 .DS_Store
 Thumbs.db
+tmp
 
 # Environment
 .env
 .env.*
 *.pem
 *.key
+
+# Files to ignore
+IMPROVEMENTS.md

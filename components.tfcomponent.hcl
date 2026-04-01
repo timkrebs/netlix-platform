@@ -1,0 +1,164 @@
+# ─── DNS (Route53 + ACM) ───────────────────────────────────────────────────
+
+component "dns" {
+  source = "./terraform/components/dns"
+
+  inputs = {
+    domain      = var.base_domain
+    cluster_env = var.environment
+  }
+
+  providers = {
+    aws = provider.aws.main
+  }
+}
+
+# ─── Networking (VPC + subnets + flow logs) ────────────────────────────────
+
+component "networking" {
+  source = "./terraform/components/networking"
+
+  inputs = {
+    vpc_cidr    = var.vpc_cidr
+    azs         = var.azs
+    environment = var.environment
+    project     = var.project
+  }
+
+  providers = {
+    aws = provider.aws.main
+  }
+}
+
+# ─── EKS Cluster ──────────────────────────────────────────────────────────
+
+component "eks" {
+  source = "./terraform/components/eks"
+
+  inputs = {
+    cluster_name        = var.cluster_name
+    cluster_version     = var.cluster_version
+    vpc_id              = component.networking.vpc_id
+    private_subnet_ids  = component.networking.private_subnet_ids
+    node_instance_types = var.node_instance_types
+    node_desired_size   = var.node_desired_size
+    node_min_size       = var.node_min_size
+    node_max_size       = var.node_max_size
+    environment         = var.environment
+    project             = var.project
+  }
+
+  providers = {
+    aws       = provider.aws.main
+    time      = provider.time.default
+    tls       = provider.tls.default
+    null      = provider.null.default
+    cloudinit = provider.cloudinit.default
+  }
+}
+
+# ─── HVN Peering (HCP Vault ↔ AWS VPC) ────────────────────────────────────
+
+component "hvn_peering" {
+  source = "./terraform/components/hvn-peering"
+
+  inputs = {
+    hvn_id                  = var.hvn_id
+    peer_vpc_id             = component.networking.vpc_id
+    peer_account_id         = component.networking.vpc_owner_id
+    peer_vpc_region         = var.aws_region
+    vpc_cidr                = var.vpc_cidr
+    private_route_table_ids = component.networking.private_route_table_ids
+    environment             = var.environment
+    project                 = var.project
+  }
+
+  providers = {
+    hcp = provider.hcp.main
+    aws = provider.aws.main
+  }
+}
+
+# ─── RDS PostgreSQL ───────────────────────────────────────────────────────
+
+component "rds" {
+  source = "./terraform/components/rds"
+
+  inputs = {
+    vpc_id             = component.networking.vpc_id
+    private_subnet_ids = component.networking.private_subnet_ids
+    db_instance_class  = var.db_instance_class
+    db_name            = var.db_name
+    db_engine_version  = var.db_engine_version
+    eks_security_group = component.eks.cluster_security_group_id
+    hvn_cidr_block     = component.hvn_peering.hvn_cidr_block
+    environment        = var.environment
+    project            = var.project
+  }
+
+  providers = {
+    aws    = provider.aws.main
+    random = provider.random.default
+  }
+}
+
+# ─── Vault Configuration ──────────────────────────────────────────────────
+
+component "vault_config" {
+  source = "./terraform/components/vault-config"
+
+  inputs = {
+    vault_cluster_id        = var.vault_cluster_id
+    vault_address           = var.vault_address
+    eks_cluster_endpoint    = component.eks.cluster_endpoint
+    eks_cluster_ca          = component.eks.cluster_ca_certificate
+    eks_oidc_provider_arn   = component.eks.oidc_provider_arn
+    eks_oidc_provider_url   = component.eks.oidc_provider_url
+    rds_endpoint            = component.rds.endpoint
+    rds_port                = component.rds.port
+    rds_admin_username      = component.rds.admin_username
+    rds_admin_password      = component.rds.admin_password
+    db_name                 = var.db_name
+    github_org              = var.github_org
+    github_pat              = var.github_pat
+    pki_allowed_domains     = [var.base_domain, "${var.base_domain}", "svc.cluster.local"]
+    environment             = var.environment
+    create_shared_resources = var.environment == "dev"
+  }
+
+  providers = {
+    vault = provider.vault.hcp
+  }
+}
+
+# ─── Vault Secrets Operator ───────────────────────────────────────────────
+
+component "vso" {
+  source = "./terraform/components/vso"
+
+  inputs = {
+    vault_address        = component.vault_config.vault_public_endpoint
+    vault_namespace      = component.vault_config.vault_namespace
+    kubernetes_auth_path = component.vault_config.kubernetes_auth_path
+  }
+
+  providers = {
+    helm       = provider.helm.eks
+    kubernetes = provider.kubernetes.eks
+  }
+}
+
+# ─── ArgoCD ───────────────────────────────────────────────────────────────
+
+component "argocd" {
+  source = "./terraform/components/argocd"
+
+  inputs = {
+    gitops_repo_url  = "https://github.com/${var.github_org}/netlix-gitops.git"
+    target_namespace = "netlix"
+  }
+
+  providers = {
+    helm = provider.helm.eks
+  }
+}

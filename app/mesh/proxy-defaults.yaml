@@ -1,0 +1,11 @@
+apiVersion: consul.hashicorp.com/v1alpha1
+kind: ProxyDefaults
+metadata:
+  name: global        # must be "global" — this is a cluster-wide setting
+  namespace: consul
+spec:
+  config:
+    # Enable L7 metrics (request rate, latency, status codes) for all sidecars.
+    # Without this, Envoy only emits L4 (bytes in/out, connections).
+    protocol: http
+    envoy_prometheus_bind_addr: "0.0.0.0:20200"

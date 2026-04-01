@@ -1,0 +1,141 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: web
+  namespace: consul
+---
+# Kubernetes Service — ClusterIP for mesh traffic.
+# The web UI is exposed publicly via its own ALB Ingress below.
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: consul
+spec:
+  selector:
+    app: web
+  ports:
+  - name: http
+    port: 9090
+    targetPort: 9090
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: consul
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+        # Datadog Unified Service Tagging
+        tags.datadoghq.com/env: "dev"
+        tags.datadoghq.com/service: "web"
+        tags.datadoghq.com/version: "v0.26.2"
+      annotations:
+        # ── Consul service mesh ──────────────────────────────────────────────
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "web"
+        consul.hashicorp.com/connect-service-port: "9090"
+        # Upstream: Consul creates an Envoy listener on localhost:8080.
+        # The web container calls http://localhost:8080 and Envoy does mTLS
+        # to the api service on the other end.
+        consul.hashicorp.com/connect-service-upstreams: "api:8080"
+        # Exclude app port so kubelet health probes can reach app directly.
+        consul.hashicorp.com/transparent-proxy-exclude-inbound-ports: "9090"
+        # ── Prometheus scraping via Envoy sidecar ────────────────────────────
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "20200"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: web
+      containers:
+      - name: web
+        # A tiny Go HTTP server that proxies to the upstream API and renders
+        # the result — shows the full request chain in one response.
+        image: nicholasjackson/fake-service:v0.26.2
+        env:
+        - name: NAME
+          value: "web"
+        - name: MESSAGE
+          value: "Hello from the web frontend"
+        - name: UPSTREAM_URIS
+          # Envoy upstream listener injected by Consul on localhost:8080
+          value: "http://localhost:8080"
+        - name: SERVER_TYPE
+          value: "http"
+        - name: LISTEN_ADDR
+          value: "0.0.0.0:9090"
+        # ── Datadog APM + trace correlation ───────────────────────────────────
+        - name: DD_AGENT_HOST
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        - name: DD_ENTITY_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.uid
+        - name: DD_ENV
+          value: "dev"
+        - name: DD_SERVICE
+          value: "web"
+        - name: DD_VERSION
+          value: "v0.26.2"
+        ports:
+        - containerPort: 9090
+        resources:
+          requests:
+            cpu: 50m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 64Mi
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 9090
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 9090
+          initialDelaySeconds: 10
+          periodSeconds: 30
+---
+# ALB Ingress for the web frontend — publicly accessible at web.dev.netlix.dev.
+# ExternalDNS will create the Route53 A record automatically.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web
+  namespace: consul
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-2:173003892479:certificate/fe18c3f0-3ef2-41ad-93a0-99b48bbb3003"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443},{"HTTP":80}]'
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    # web → Envoy sidecar is plain HTTP (Envoy handles mTLS internally)
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/success-codes: '200'
+    external-dns.alpha.kubernetes.io/hostname: web.dev.netlix.dev
+spec:
+  ingressClassName: alb
+  rules:
+  - host: web.dev.netlix.dev
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web
+            port:
+              number: 9090

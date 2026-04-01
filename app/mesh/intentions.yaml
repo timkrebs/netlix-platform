@@ -1,0 +1,36 @@
+apiVersion: consul.hashicorp.com/v1alpha1
+kind: ServiceIntentions
+metadata:
+  # name must match the destination service
+  name: api
+  namespace: consul
+spec:
+  destination:
+    name: api
+  sources:
+  # Only web is allowed to call api
+  - name: web
+    # L7 permissions — only allow GET/POST on any path.
+    # When using permissions, omit the top-level action field.
+    permissions:
+    - action: allow
+      http:
+        methods: ["GET", "POST"]
+        pathPrefix: "/"
+  # Explicit deny-all for every other caller
+  - name: "*"
+    action: deny
+---
+apiVersion: consul.hashicorp.com/v1alpha1
+kind: ServiceIntentions
+metadata:
+  name: web
+  namespace: consul
+spec:
+  destination:
+    name: web
+  sources:
+  # Allow inbound from the ALB (any source, since ALB uses
+  # a non-mesh IP — mesh intentions only apply between injected services)
+  - name: "*"
+    action: allow

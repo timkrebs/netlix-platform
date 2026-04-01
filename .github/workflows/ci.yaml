@@ -2,30 +2,53 @@ name: CI
 
 on:
   pull_request:
-    paths: ['app/**']
+    paths: ['terraform/**', '*.tfcomponent.hcl', '*.tfdeploy.hcl']
   push:
     branches: [main]
-    paths: ['app/**']
+    paths: ['terraform/**', '*.tfcomponent.hcl', '*.tfdeploy.hcl']
 
 jobs:
-  build:
+  terraform-fmt:
+    name: Format check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v5
+      - uses: hashicorp/setup-terraform@v3
         with:
-          go-version: '1.22'
-          cache-dependency-path: app/go.sum
+          terraform_version: '1.14.5'
 
-      - name: Build
-        working-directory: app
-        run: go build -v ./...
+      - name: Format check (components)
+        run: terraform fmt -check -recursive terraform/components/
 
-      - name: Test
-        working-directory: app
-        run: go test -v -race ./...
+      - name: Format check (bootstrap)
+        run: terraform fmt -check -recursive bootstrap/
 
-      - name: Vet
-        working-directory: app
-        run: go vet ./...
+  validate-components:
+    name: Validate ${{ matrix.component }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component:
+          - networking
+          - dns
+          - eks
+          - rds
+          - hvn-peering
+          - vault-config
+          - vso
+          - argocd
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.14.5'
+
+      - name: Init
+        working-directory: terraform/components/${{ matrix.component }}
+        run: terraform init -backend=false
+
+      - name: Validate
+        working-directory: terraform/components/${{ matrix.component }}
+        run: terraform validate

@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api
+  namespace: consul
+---
+# Kubernetes Service — ClusterIP only.
+# Consul service mesh handles routing; no LoadBalancer needed.
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: consul
+spec:
+  selector:
+    app: api
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: consul
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+        # Datadog Unified Service Tagging — correlates metrics, logs, and
+        # traces under the same service/env/version in every Datadog view.
+        tags.datadoghq.com/env: "dev"
+        tags.datadoghq.com/service: "api"
+        tags.datadoghq.com/version: "v0.26.2"
+      annotations:
+        # ── Consul service mesh ──────────────────────────────────────────────
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "api"
+        consul.hashicorp.com/connect-service-port: "8080"
+        # Exclude app port from iptables redirect so kubelet health probes
+        # reach the app directly without going through Envoy.
+        consul.hashicorp.com/transparent-proxy-exclude-inbound-ports: "8080"
+        # ── Prometheus scraping via Envoy sidecar ────────────────────────────
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "20200"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: api
+      containers:
+      - name: api
+        # nicholasjackson/fake-service is the canonical Consul mesh demo image.
+        # It exposes /health, /ready, simulates upstream calls, and emits
+        # structured logs with request timing — ideal for observability demos.
+        image: nicholasjackson/fake-service:v0.26.2
+        env:
+        - name: NAME
+          value: "api"
+        - name: MESSAGE
+          value: "API response from backend"
+        - name: SERVER_TYPE
+          value: "http"
+        - name: LISTEN_ADDR
+          value: "0.0.0.0:8080"
+        # ── Datadog APM + trace correlation ───────────────────────────────────
+        # DD_AGENT_HOST routes StatsD metrics and APM traces to the local
+        # Datadog agent DaemonSet pod on the same node (hostIP via downward API).
+        - name: DD_AGENT_HOST
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        # DD_ENTITY_ID ties container-level metrics to the right Datadog entity.
+        - name: DD_ENTITY_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.uid
+        - name: DD_ENV
+          value: "dev"
+        - name: DD_SERVICE
+          value: "api"
+        - name: DD_VERSION
+          value: "v0.26.2"
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            cpu: 50m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 64Mi
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30

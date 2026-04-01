@@ -1,0 +1,34 @@
+# Consul Helm chart values for EKS
+# Chart version: 1.9.5 / App version: 1.22.5
+
+global:
+  enabled: true
+  name: consul
+  image: hashicorp/consul:1.22.5
+  datacenter: dc1
+  tls:
+    enabled: true
+    enableAutoEncrypt: true
+  acls:
+    manageSystemACLs: true
+
+server:
+  enabled: true
+  replicas: 1
+  storage: 10Gi
+  storageClass: gp2
+  resources:
+    requests:
+      memory: 200Mi
+      cpu: 100m
+    limits:
+      memory: 200Mi
+      cpu: 100m
+
+ui:
+  enabled: true
+  service:
+    type: LoadBalancer
+
+connectInject:
+  enabled: true
