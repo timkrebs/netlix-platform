@@ -18,12 +18,12 @@ resource "vault_database_secret_backend_connection" "postgres" {
 }
 
 resource "vault_database_secret_backend_role" "app" {
-  namespace           = vault_namespace.env.path_fq
-  backend             = vault_mount.database.path
-  name                = "netlix-readwrite"
-  db_name             = vault_database_secret_backend_connection.postgres.name
-  default_ttl         = 3600
-  max_ttl             = 86400
+  namespace   = vault_namespace.env.path_fq
+  backend     = vault_mount.database.path
+  name        = "netlix-readwrite"
+  db_name     = vault_database_secret_backend_connection.postgres.name
+  default_ttl = 3600
+  max_ttl     = 86400
 
   creation_statements = [
     "CREATE ROLE \"{{name}}\" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';",
