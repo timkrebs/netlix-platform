@@ -12,3 +12,4 @@ output "cluster_security_group_id" { value = module.eks.cluster_security_group_i
 output "oidc_provider_arn" { value = module.eks.oidc_provider_arn }
 output "oidc_provider_url" { value = module.eks.cluster_oidc_issuer_url }
 output "lb_controller_role_arn" { value = module.lb_controller_irsa.iam_role_arn }
+output "external_dns_role_arn" { value = module.external_dns_irsa.iam_role_arn }
