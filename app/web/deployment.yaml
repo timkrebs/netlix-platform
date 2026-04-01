@@ -133,7 +133,7 @@ metadata:
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-2:173003892479:certificate/fe18c3f0-3ef2-41ad-93a0-99b48bbb3003"
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:eu-central-1:173003892479:certificate/72a5bfed-9f0f-4cb5-a661-2a275ee05a6a"
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443},{"HTTP":80}]'
     alb.ingress.kubernetes.io/ssl-redirect: '443'
     # web → Envoy sidecar is plain HTTP (Envoy handles mTLS internally)

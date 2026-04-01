@@ -4,7 +4,7 @@ metadata:
   name: web
   namespace: consul
   annotations:
-    alb.ingress.kubernetes.io/certificate-arn: "REPLACE_WITH_ACM_CERT_ARN"
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:eu-central-1:173003892479:certificate/72a5bfed-9f0f-4cb5-a661-2a275ee05a6a"
     external-dns.alpha.kubernetes.io/hostname: app.dev.netlix.dev
 spec:
   rules:
