@@ -1,0 +1,20 @@
+# Default — require platform team review for all changes
+*                           @timkrebs
+
+# Infrastructure components — platform team
+terraform/                  @timkrebs
+*.tfcomponent.hcl           @timkrebs
+*.tfdeploy.hcl              @timkrebs
+bootstrap/                  @timkrebs
+
+# Sentinel policies — security review required
+sentinel/                   @timkrebs
+
+# Application manifests
+app/                        @timkrebs
+
+# Kubernetes & monitoring
+kubernetes/                 @timkrebs
+
+# CI/CD pipelines
+.github/                    @timkrebs

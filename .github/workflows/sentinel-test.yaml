@@ -9,5 +9,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: hashicorp/setup-sentinel@v1
-      - run: cd sentinel && sentinel test -verbose ./policies/
+
+      - name: Install Sentinel
+        run: |
+          SENTINEL_VERSION="0.26.3"
+          curl -fsSL "https://releases.hashicorp.com/sentinel/${SENTINEL_VERSION}/sentinel_${SENTINEL_VERSION}_linux_amd64.zip" -o sentinel.zip
+          unzip sentinel.zip -d /usr/local/bin
+          sentinel version
+
+      - name: Run Sentinel tests
+        working-directory: sentinel
+        run: sentinel test -verbose ./policies/

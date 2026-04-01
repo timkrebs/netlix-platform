@@ -78,6 +78,6 @@ resource "aws_iam_role_policy_attachment" "tfc_staging" {
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
-output "dev_role_arn"     { value = aws_iam_role.tfc_dev.arn }
+output "dev_role_arn" { value = aws_iam_role.tfc_dev.arn }
 output "staging_role_arn" { value = aws_iam_role.tfc_staging.arn }
 output "oidc_provider_arn" { value = aws_iam_openid_connect_provider.tfc.arn }

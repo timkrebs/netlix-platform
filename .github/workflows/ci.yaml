@@ -2,10 +2,10 @@ name: CI
 
 on:
   pull_request:
-    paths: ['terraform/**', '*.tfcomponent.hcl', '*.tfdeploy.hcl']
+    paths: ['terraform/**', '*.tfcomponent.hcl', '*.tfdeploy.hcl', 'sentinel/**']
   push:
     branches: [main]
-    paths: ['terraform/**', '*.tfcomponent.hcl', '*.tfdeploy.hcl']
+    paths: ['terraform/**', '*.tfcomponent.hcl', '*.tfdeploy.hcl', 'sentinel/**']
 
 jobs:
   terraform-fmt:
@@ -23,6 +23,23 @@ jobs:
 
       - name: Format check (bootstrap)
         run: terraform fmt -check -recursive bootstrap/
+
+  sentinel-test:
+    name: Sentinel policy tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Sentinel
+        run: |
+          SENTINEL_VERSION="0.26.3"
+          curl -fsSL "https://releases.hashicorp.com/sentinel/${SENTINEL_VERSION}/sentinel_${SENTINEL_VERSION}_linux_amd64.zip" -o sentinel.zip
+          unzip sentinel.zip -d /usr/local/bin
+          sentinel version
+
+      - name: Run Sentinel tests
+        working-directory: sentinel
+        run: sentinel test -verbose ./policies/
 
   validate-components:
     name: Validate ${{ matrix.component }}
