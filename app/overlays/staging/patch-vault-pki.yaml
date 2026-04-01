@@ -1,0 +1,8 @@
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultPKISecret
+metadata:
+  name: web-tls
+  namespace: consul
+spec:
+  namespace: admin/staging
+  commonName: web.staging.netlix.dev
