@@ -123,7 +123,7 @@ spec:
           secretName: web-tls
           optional: true
 ---
-# ALB Ingress for the web frontend — publicly accessible at web.dev.netlix.dev.
+# ALB Ingress for the web frontend — publicly accessible at app.dev.netlix.dev.
 # ExternalDNS will create the Route53 A record automatically.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -140,11 +140,11 @@ metadata:
     alb.ingress.kubernetes.io/backend-protocol: HTTP
     alb.ingress.kubernetes.io/healthcheck-path: /health
     alb.ingress.kubernetes.io/success-codes: '200'
-    external-dns.alpha.kubernetes.io/hostname: web.dev.netlix.dev
+    external-dns.alpha.kubernetes.io/hostname: app.dev.netlix.dev
 spec:
   ingressClassName: alb
   rules:
-  - host: web.dev.netlix.dev
+  - host: app.dev.netlix.dev
     http:
       paths:
       - path: /

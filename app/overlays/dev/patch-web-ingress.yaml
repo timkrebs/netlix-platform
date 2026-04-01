@@ -4,9 +4,8 @@ metadata:
   name: web
   namespace: consul
   annotations:
-    # Override certificate ARN per environment — injected by ArgoCD ApplicationSet
     alb.ingress.kubernetes.io/certificate-arn: "REPLACE_WITH_ACM_CERT_ARN"
-    external-dns.alpha.kubernetes.io/hostname: web.dev.netlix.dev
+    external-dns.alpha.kubernetes.io/hostname: app.dev.netlix.dev
 spec:
   rules:
-    - host: web.dev.netlix.dev
+    - host: app.dev.netlix.dev

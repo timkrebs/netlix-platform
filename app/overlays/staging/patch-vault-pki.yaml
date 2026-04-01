@@ -5,4 +5,4 @@ metadata:
   namespace: consul
 spec:
   namespace: admin/staging
-  commonName: web.staging.netlix.dev
+  commonName: app.staging.netlix.dev
