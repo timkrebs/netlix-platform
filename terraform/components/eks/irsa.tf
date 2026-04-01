@@ -50,7 +50,7 @@ module "external_dns_irsa" {
 
   role_name                     = "${var.cluster_name}-external-dns"
   attach_external_dns_policy    = true
-  external_dns_hosted_zone_arns = var.route53_zone_arns
+  external_dns_hosted_zone_arns = ["arn:aws:route53:::hostedzone/*"]
 
   oidc_providers = {
     main = {

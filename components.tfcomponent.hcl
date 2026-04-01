@@ -47,7 +47,6 @@ component "eks" {
     environment                          = var.environment
     project                              = var.project
     cluster_endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
-    route53_zone_arns                    = [component.dns.zone_arn]
   }
 
   providers = {

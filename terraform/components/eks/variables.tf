@@ -53,9 +53,3 @@ variable "project" {
   description = "Project name"
   type        = string
 }
-
-variable "route53_zone_arns" {
-  description = "Route53 hosted zone ARNs that ExternalDNS is allowed to manage"
-  type        = list(string)
-  default     = []
-}
