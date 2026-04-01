@@ -12,3 +12,8 @@ variable "external_dns_role_arn" {
   description = "IAM role ARN for the ExternalDNS service account (IRSA)"
   type        = string
 }
+
+variable "zone_id" {
+  description = "Route53 hosted zone ID to manage records in"
+  type        = string
+}

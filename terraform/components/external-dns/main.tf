@@ -27,6 +27,10 @@ resource "helm_release" "external_dns" {
     value = var.domain
   }
   set {
+    name  = "zoneIdFilters[0]"
+    value = var.zone_id
+  }
+  set {
     name  = "serviceAccount.create"
     value = "true"
   }
