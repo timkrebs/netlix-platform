@@ -56,9 +56,9 @@ spec:
       serviceAccountName: web
       containers:
       - name: web
-        # A tiny Go HTTP server that proxies to the upstream API and renders
-        # the result — shows the full request chain in one response.
-        image: nicholasjackson/fake-service:v0.26.2
+        # Custom Go HTTP server — image tag managed by Kustomize overlay.
+        # The placeholder name "netlix-web" is replaced by the images transformer.
+        image: netlix-web
         env:
         - name: NAME
           value: "web"
@@ -67,10 +67,16 @@ spec:
         - name: UPSTREAM_URIS
           # Envoy upstream listener injected by Consul on localhost:8080
           value: "http://localhost:8080"
-        - name: SERVER_TYPE
-          value: "http"
         - name: LISTEN_ADDR
           value: "0.0.0.0:9090"
+        - name: ENVIRONMENT
+          value: "dev"
+        - name: VERSION
+          value: "latest"
+        - name: TLS_CERT_PATH
+          value: "/vault/secrets/tls.crt"
+        - name: TLS_KEY_PATH
+          value: "/vault/secrets/tls.key"
         # ── Datadog APM + trace correlation ───────────────────────────────────
         - name: DD_AGENT_HOST
           valueFrom:
@@ -85,7 +91,7 @@ spec:
         - name: DD_SERVICE
           value: "web"
         - name: DD_VERSION
-          value: "v0.26.2"
+          value: "latest"
         ports:
         - containerPort: 9090
         resources:
@@ -107,6 +113,15 @@ spec:
             port: 9090
           initialDelaySeconds: 10
           periodSeconds: 30
+        volumeMounts:
+        - name: vault-tls
+          mountPath: /vault/secrets
+          readOnly: true
+      volumes:
+      - name: vault-tls
+        secret:
+          secretName: web-tls
+          optional: true
 ---
 # ALB Ingress for the web frontend — publicly accessible at web.dev.netlix.dev.
 # ExternalDNS will create the Route53 A record automatically.
