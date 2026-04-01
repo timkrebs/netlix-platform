@@ -37,7 +37,8 @@ deployment "dev" {
     azs      = ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
 
     # DNS
-    base_domain = "netlix.dev"
+    base_domain     = "netlix.dev"
+    route53_zone_id = "Z03825243OZJVWRUDJ5T"
 
     # EKS
     cluster_name        = "netlix-dev"

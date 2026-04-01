@@ -64,6 +64,11 @@ variable "base_domain" {
   description = "Root domain managed by Route53 (e.g. netlix.dev)"
 }
 
+variable "route53_zone_id" {
+  type        = string
+  description = "Pre-existing Route53 hosted zone ID (the one the registrar delegates to)"
+}
+
 # ─── EKS ───────────────────────────────────────────────────────────────────
 
 variable "cluster_name" {

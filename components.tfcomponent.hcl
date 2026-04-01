@@ -174,7 +174,7 @@ component "external_dns" {
   inputs = {
     cluster_name          = component.eks.cluster_name
     domain                = var.base_domain
-    zone_id               = component.dns.zone_id
+    zone_id               = var.route53_zone_id
     external_dns_role_arn = component.eks.external_dns_role_arn
   }
 
