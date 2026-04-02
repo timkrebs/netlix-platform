@@ -5,12 +5,9 @@ metadata:
   namespace: consul
 spec:
   template:
-    metadata:
-      labels:
-        tags.datadoghq.com/env: "staging"
     spec:
       containers:
         - name: web
           env:
-            - name: DD_ENV
+            - name: ENVIRONMENT
               value: "staging"
