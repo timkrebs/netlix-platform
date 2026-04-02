@@ -7,7 +7,7 @@ metadata:
   namespace: datadog
 spec:
   global:
-    clusterName: "your-cluster-name-here"
+    clusterName: "netlix-dev"
     site: "datadoghq.eu"
     credentials:
       apiSecret:
@@ -21,15 +21,13 @@ spec:
     apm:
       instrumentation:
         enabled: true
-        targets:
-          - name: "default-target"
-            ddTraceVersions:
-              java: "1"
-              python: "4"
-              js: "5"
-              php: "1"
-              dotnet: "3"
-              ruby: "2"
+        libVersions:
+          java: "1"
+          python: "4"
+          js: "5"
+          php: "1"
+          dotnet: "3"
+          ruby: "2"
     logCollection:
       enabled: true
       containerCollectAll: true

@@ -5,9 +5,17 @@ metadata:
   namespace: consul
 spec:
   template:
+    metadata:
+      labels:
+        tags.datadoghq.com/env: "dev"
+        tags.datadoghq.com/version: "latest"
     spec:
       containers:
         - name: api
           env:
             - name: ENVIRONMENT
               value: "dev"
+            - name: DD_ENV
+              value: "dev"
+            - name: DD_VERSION
+              value: "latest"

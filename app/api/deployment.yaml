@@ -33,6 +33,7 @@ spec:
     metadata:
       labels:
         app: api
+        tags.datadoghq.com/service: "api"
       annotations:
         # ── Consul service mesh ──────────────────────────────────────────────
         consul.hashicorp.com/connect-inject: "true"
