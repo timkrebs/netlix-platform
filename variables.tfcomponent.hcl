@@ -131,37 +131,38 @@ variable "github_pat" {
 variable "grafana_cloud_prometheus_url" {
   type        = string
   description = "Grafana Cloud Prometheus remote write endpoint"
-  default     = ""
+  ephemeral   = true
 }
 
 variable "grafana_cloud_prometheus_username" {
   type        = string
   description = "Grafana Cloud Prometheus instance ID"
-  default     = ""
+  ephemeral   = true
 }
 
 variable "grafana_cloud_loki_url" {
   type        = string
   description = "Grafana Cloud Loki push endpoint"
-  default     = ""
+  ephemeral   = true
 }
 
 variable "grafana_cloud_loki_username" {
   type        = string
   description = "Grafana Cloud Loki instance ID"
-  default     = ""
+  ephemeral   = true
 }
 
 variable "grafana_cloud_api_key" {
   type        = string
   description = "Grafana Cloud API key"
   sensitive   = true
+  ephemeral   = true
 }
 
 variable "grafana_cloud_stack_url" {
   type        = string
   description = "Grafana Cloud stack URL (e.g. https://yourstack.grafana.net)"
-  default     = ""
+  ephemeral   = true
 }
 
 # ─── Monitoring ───────────────────────────────────────────────────────────
