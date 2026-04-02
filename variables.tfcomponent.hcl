@@ -156,7 +156,6 @@ variable "grafana_cloud_api_key" {
   type        = string
   description = "Grafana Cloud API key"
   sensitive   = true
-  ephemeral   = true
 }
 
 variable "grafana_cloud_stack_url" {
