@@ -42,4 +42,8 @@ resource "helm_release" "vso" {
     name  = "defaultAuthMethod.namespace"
     value = var.vault_namespace
   }
+  set {
+    name  = "defaultAuthMethod.allowAllNamespaces"
+    value = "true"
+  }
 }
