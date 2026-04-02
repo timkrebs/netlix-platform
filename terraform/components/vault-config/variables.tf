@@ -75,6 +75,12 @@ variable "environment" {
   type        = string
 }
 
+variable "tfc_organization_name" {
+  description = "HCP Terraform organization name for JWT auth bound_claims"
+  type        = string
+  default     = ""
+}
+
 variable "create_shared_resources" {
   description = "Create shared Vault resources (userpass, root PKI, admin policy). Set to true for only one environment."
   type        = bool

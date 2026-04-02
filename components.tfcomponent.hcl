@@ -125,6 +125,7 @@ component "vault_config" {
     pki_allowed_domains     = [var.base_domain, "${var.base_domain}", "svc.cluster.local"]
     environment             = var.environment
     create_shared_resources = var.environment == "dev"
+    tfc_organization_name   = var.tfc_organization_name
   }
 
   providers = {

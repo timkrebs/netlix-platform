@@ -132,6 +132,11 @@ variable "environment" {
   type = string
 }
 
+variable "tfc_organization_name" {
+  type        = string
+  description = "HCP Terraform organization name (for Vault JWT auth bound_claims)"
+}
+
 variable "project" {
   type = string
 }

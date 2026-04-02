@@ -59,9 +59,10 @@ deployment "dev" {
     github_pat = "placeholder-replace-with-vault-dynamic-secret"
 
     # Metadata
-    environment  = "dev"
-    project      = "netlix"
-    default_tags = {}
+    environment           = "dev"
+    project               = "netlix"
+    tfc_organization_name = "tim-krebs-org"
+    default_tags          = {}
   }
 }
 

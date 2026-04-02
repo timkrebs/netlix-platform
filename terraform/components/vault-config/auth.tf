@@ -84,6 +84,54 @@ resource "vault_policy" "admin" {
   EOT
 }
 
+# ─── JWT auth for HCP Terraform dynamic credentials (shared) ────────────
+# Allows TFC Stacks runs to authenticate to Vault via OIDC instead of a
+# static token. Scoped to the TFC organization.
+
+resource "vault_jwt_auth_backend" "tfc" {
+  count              = var.create_shared_resources ? 1 : 0
+  path               = "jwt-tfc"
+  type               = "jwt"
+  oidc_discovery_url = "https://app.terraform.io"
+  bound_issuer       = "https://app.terraform.io"
+}
+
+resource "vault_policy" "tfc" {
+  count = var.create_shared_resources ? 1 : 0
+  name  = "tfc-policy"
+
+  policy = <<-EOT
+    # TFC needs full admin access to manage Vault configuration across
+    # namespaces, auth backends, PKI, database secrets, KV, and policies.
+    path "*" {
+      capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+    }
+
+    # Allow creating child namespaces
+    path "sys/namespaces/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+  EOT
+}
+
+resource "vault_jwt_auth_backend_role" "tfc" {
+  count     = var.create_shared_resources ? 1 : 0
+  backend   = vault_jwt_auth_backend.tfc[0].path
+  role_name = "tfc-stacks"
+  role_type = "jwt"
+
+  bound_audiences   = ["vault.workload.identity"]
+  bound_claims_type = "glob"
+  bound_claims = {
+    sub = "organization:${var.tfc_organization_name}:project:*:stack:*:deployment:*:operation:*"
+  }
+
+  user_claim     = "terraform_full_workspace"
+  token_policies = [vault_policy.tfc[0].name]
+  token_ttl      = 1200
+  token_max_ttl  = 3600
+}
+
 # ─── Kubernetes auth roles ─────────────────────────────────────────────────
 
 resource "vault_kubernetes_auth_backend_role" "app" {
