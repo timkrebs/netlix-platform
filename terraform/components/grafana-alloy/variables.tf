@@ -1,34 +1,3 @@
-variable "grafana_cloud_prometheus_url" {
-  description = "Grafana Cloud Prometheus remote write endpoint"
-  type        = string
-  ephemeral   = true
-}
-
-variable "grafana_cloud_prometheus_username" {
-  description = "Grafana Cloud Prometheus instance ID (numeric)"
-  type        = string
-  ephemeral   = true
-}
-
-variable "grafana_cloud_loki_url" {
-  description = "Grafana Cloud Loki push endpoint"
-  type        = string
-  ephemeral   = true
-}
-
-variable "grafana_cloud_loki_username" {
-  description = "Grafana Cloud Loki instance ID (numeric)"
-  type        = string
-  ephemeral   = true
-}
-
-variable "grafana_cloud_api_key" {
-  description = "Grafana Cloud API key with MetricsPublisher and LogsPublisher roles"
-  type        = string
-  sensitive   = true
-  ephemeral   = true
-}
-
 variable "cluster_name" {
   description = "EKS cluster name for metric labels"
   type        = string

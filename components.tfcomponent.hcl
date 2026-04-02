@@ -210,18 +210,12 @@ component "grafana_alloy" {
   source = "./terraform/components/grafana-alloy"
 
   inputs = {
-    grafana_cloud_prometheus_url      = var.grafana_cloud_prometheus_url
-    grafana_cloud_prometheus_username = var.grafana_cloud_prometheus_username
-    grafana_cloud_loki_url            = var.grafana_cloud_loki_url
-    grafana_cloud_loki_username       = var.grafana_cloud_loki_username
-    grafana_cloud_api_key             = var.grafana_cloud_api_key
-    cluster_name                      = var.cluster_name
-    environment                       = var.environment
+    cluster_name = var.cluster_name
+    environment  = var.environment
   }
 
   providers = {
-    helm       = provider.helm.eks
-    kubernetes = provider.kubernetes.eks
+    helm = provider.helm.eks
   }
 }
 

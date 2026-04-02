@@ -1,26 +1,3 @@
-# ─── Kubernetes Secret (write-only — credentials never stored in TF state) ─
-
-resource "kubernetes_secret_v1" "grafana_credentials" {
-  metadata {
-    name      = "alloy-grafana-credentials"
-    namespace = "grafana-system"
-  }
-
-  data_wo = {
-    GRAFANA_PROM_URL      = var.grafana_cloud_prometheus_url
-    GRAFANA_PROM_USERNAME = var.grafana_cloud_prometheus_username
-    GRAFANA_LOKI_URL      = var.grafana_cloud_loki_url
-    GRAFANA_LOKI_USERNAME = var.grafana_cloud_loki_username
-    GRAFANA_API_KEY       = var.grafana_cloud_api_key
-  }
-
-  data_wo_revision = 1
-
-  depends_on = [helm_release.alloy]
-}
-
-# ─── Grafana Alloy Helm Release ──────────────────────────────────────────
-
 resource "helm_release" "alloy" {
   name             = "alloy"
   namespace        = "grafana-system"
@@ -46,13 +23,6 @@ resource "helm_release" "alloy" {
               source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_scrape"]
               regex         = "true"
               action        = "keep"
-            }
-            rule {
-              source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_port"]
-              target_label  = "__address__"
-              regex         = "(\\d+)"
-              replacement   = "$${1}:$1"
-              action        = "replace"
             }
             rule {
               source_labels = ["__meta_kubernetes_pod_ip", "__meta_kubernetes_pod_annotation_prometheus_io_port"]
@@ -99,7 +69,7 @@ resource "helm_release" "alloy" {
             targets    = discovery.kubernetes.nodes.targets
             forward_to = [prometheus.remote_write.grafana_cloud.receiver]
 
-            scheme          = "https"
+            scheme = "https"
             tls_config {
               insecure_skip_verify = true
             }
@@ -122,7 +92,7 @@ resource "helm_release" "alloy" {
             targets    = discovery.relabel.cadvisor.output
             forward_to = [prometheus.remote_write.grafana_cloud.receiver]
 
-            scheme          = "https"
+            scheme = "https"
             tls_config {
               insecure_skip_verify = true
             }
@@ -212,7 +182,7 @@ resource "helm_release" "alloy" {
                 severity = "warning",
               }
               annotations = {
-                summary     = "Pod {{ $labels.namespace }}/{{ $labels.pod }} is crash looping",
+                summary     = "Pod {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.pod {{ "}}" }} is crash looping",
                 description = "Pod has restarted more than 3 times in the last 15 minutes.",
               }
             }
@@ -225,8 +195,8 @@ resource "helm_release" "alloy" {
                 severity = "warning",
               }
               annotations = {
-                summary     = "Pod {{ $labels.namespace }}/{{ $labels.pod }} was OOMKilled",
-                description = "Container {{ $labels.container }} was terminated due to OOM.",
+                summary     = "Pod {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.pod {{ "}}" }} was OOMKilled",
+                description = "Container {{ "{{" }} $labels.container {{ "}}" }} was terminated due to OOM.",
               }
             }
 
@@ -238,7 +208,7 @@ resource "helm_release" "alloy" {
                 severity = "warning",
               }
               annotations = {
-                summary     = "Pod {{ $labels.namespace }}/{{ $labels.pod }} is not ready",
+                summary     = "Pod {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.pod {{ "}}" }} is not ready",
                 description = "Pod has been in a non-ready state for more than 5 minutes.",
               }
             }
@@ -251,8 +221,8 @@ resource "helm_release" "alloy" {
                 severity = "critical",
               }
               annotations = {
-                summary     = "High 5xx error rate on {{ $labels.pod }}",
-                description = "Pod {{ $labels.namespace }}/{{ $labels.pod }} has elevated 5xx error rate.",
+                summary     = "High 5xx error rate on {{ "{{" }} $labels.pod {{ "}}" }}",
+                description = "Pod {{ "{{" }} $labels.namespace {{ "}}" }}/{{ "{{" }} $labels.pod {{ "}}" }} has elevated 5xx error rate.",
               }
             }
 
@@ -264,7 +234,7 @@ resource "helm_release" "alloy" {
                 severity = "critical",
               }
               annotations = {
-                summary     = "Node {{ $labels.node }} is not ready",
+                summary     = "Node {{ "{{" }} $labels.node {{ "}}" }} is not ready",
                 description = "Node has been in a non-ready state for more than 5 minutes.",
               }
             }
@@ -277,8 +247,8 @@ resource "helm_release" "alloy" {
                 severity = "warning",
               }
               annotations = {
-                summary     = "PVC {{ $labels.persistentvolumeclaim }} is over 85% full",
-                description = "Persistent volume in {{ $labels.namespace }} is running low on space.",
+                summary     = "PVC {{ "{{" }} $labels.persistentvolumeclaim {{ "}}" }} is over 85% full",
+                description = "Persistent volume in {{ "{{" }} $labels.namespace {{ "}}" }} is running low on space.",
               }
             }
 
@@ -291,7 +261,7 @@ resource "helm_release" "alloy" {
               }
               annotations = {
                 summary     = "TLS certificate expiring within 24 hours",
-                description = "Certificate {{ $labels.name }} in {{ $labels.namespace }} expires soon.",
+                description = "Certificate {{ "{{" }} $labels.name {{ "}}" }} in {{ "{{" }} $labels.namespace {{ "}}" }} expires soon.",
               }
             }
           }

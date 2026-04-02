@@ -62,13 +62,9 @@ deployment "dev" {
     github_org = "timkrebs"
     github_pat = "placeholder-replace-with-vault-dynamic-secret"
 
-    # Grafana Cloud
-    grafana_cloud_prometheus_url      = store.varset.netlix-grafana.grafana_cloud_prometheus_url
-    grafana_cloud_prometheus_username = store.varset.netlix-grafana.grafana_cloud_prometheus_username
-    grafana_cloud_loki_url            = store.varset.netlix-grafana.grafana_cloud_loki_url
-    grafana_cloud_loki_username       = store.varset.netlix-grafana.grafana_cloud_loki_username
-    grafana_cloud_api_key             = store.varset.netlix-grafana.grafana_cloud_api_key
-    grafana_cloud_stack_url           = store.varset.netlix-grafana.grafana_cloud_stack_url
+    # Grafana Cloud (only provider credentials — Alloy reads from K8s secret)
+    grafana_cloud_api_key   = store.varset.netlix-grafana.grafana_cloud_api_key
+    grafana_cloud_stack_url = store.varset.netlix-grafana.grafana_cloud_stack_url
     alert_email                       = ""
 
     # Metadata
