@@ -128,14 +128,6 @@ variable "github_pat" {
 
 
 
-# ─── Datadog ──────────────────────────────────────────────────────────────
-
-variable "datadog_site" {
-  type        = string
-  default     = "datadoghq.eu"
-  description = "Datadog site (e.g. datadoghq.eu, datadoghq.com)"
-}
-
 # ─── Monitoring ───────────────────────────────────────────────────────────
 
 variable "alert_email" {
