@@ -22,3 +22,9 @@ variable "certificate_arn" {
   description = "ACM wildcard certificate ARN for ALB TLS termination"
   type        = string
 }
+
+variable "gitops_target_revision" {
+  description = "Git branch or tag for ArgoCD to track"
+  type        = string
+  default     = "main"
+}

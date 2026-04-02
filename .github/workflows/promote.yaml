@@ -1,0 +1,86 @@
+name: Promote
+
+on:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: 'Source branch'
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+      to:
+        description: 'Target branch'
+        required: true
+        type: choice
+        options:
+          - staging
+          - main
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  promote:
+    name: Promote ${{ inputs.from }} → ${{ inputs.to }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate promotion path
+        run: |
+          FROM="${{ inputs.from }}"
+          TO="${{ inputs.to }}"
+
+          if [[ "$FROM" == "dev" && "$TO" == "staging" ]]; then
+            echo "Valid promotion: dev → staging"
+          elif [[ "$FROM" == "staging" && "$TO" == "main" ]]; then
+            echo "Valid promotion: staging → main"
+          else
+            echo "::error::Invalid promotion path: ${FROM} → ${TO}. Allowed: dev→staging, staging→main"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.from }}
+          fetch-depth: 0
+
+      - name: Generate commit summary
+        id: summary
+        run: |
+          COMMITS=$(git log origin/${{ inputs.to }}..origin/${{ inputs.from }} --oneline --no-merges | head -30)
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "commits<<${EOF}" >> "$GITHUB_OUTPUT"
+          echo "${COMMITS}" >> "$GITHUB_OUTPUT"
+          echo "${EOF}" >> "$GITHUB_OUTPUT"
+
+          COUNT=$(git log origin/${{ inputs.to }}..origin/${{ inputs.from }} --oneline --no-merges | wc -l | tr -d ' ')
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+
+      - name: Create promotion PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --base "${{ inputs.to }}" \
+            --head "${{ inputs.from }}" \
+            --title "promote(${{ inputs.from }} → ${{ inputs.to }}): ${{ steps.summary.outputs.count }} commits" \
+            --body "$(cat <<'PREOF'
+          ## Promotion: ${{ inputs.from }} → ${{ inputs.to }}
+
+          **${{ steps.summary.outputs.count }}** commits to promote:
+
+          ```
+          ${{ steps.summary.outputs.commits }}
+          ```
+
+          ### Checklist
+          - [ ] CI passes on source branch
+          - [ ] Smoke tests verified in ${{ inputs.from }} environment
+          - [ ] No known regressions
+
+          ---
+          Triggered by @${{ github.actor }} via workflow dispatch.
+          PREOF
+          )"
