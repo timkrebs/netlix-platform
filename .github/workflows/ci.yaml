@@ -59,6 +59,7 @@ jobs:
           - external-dns
           - argocd
           - monitoring
+          - datadog-operator
     steps:
       - uses: actions/checkout@v4
 

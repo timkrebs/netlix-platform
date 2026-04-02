@@ -128,6 +128,21 @@ variable "github_pat" {
 
 
 
+# ─── Datadog ──────────────────────────────────────────────────────────────
+
+variable "datadog_api_key" {
+  type        = string
+  sensitive   = true
+  ephemeral   = true
+  description = "Datadog API key"
+}
+
+variable "datadog_site" {
+  type        = string
+  default     = "datadoghq.eu"
+  description = "Datadog site (e.g. datadoghq.eu, datadoghq.com)"
+}
+
 # ─── Monitoring ───────────────────────────────────────────────────────────
 
 variable "alert_email" {

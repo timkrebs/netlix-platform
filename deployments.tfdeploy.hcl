@@ -59,6 +59,10 @@ deployment "dev" {
 
     alert_email = ""
 
+    # Datadog
+    datadog_api_key = store.varset.netlix-hcp.datadog_api_key
+    datadog_site    = store.varset.netlix-hcp.datadog_site
+
     # Metadata
     environment           = "dev"
     project               = "netlix"
