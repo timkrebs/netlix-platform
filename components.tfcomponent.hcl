@@ -220,8 +220,6 @@ component "grafana_k8s_monitoring" {
     otlp_username             = var.grafana_otlp_username
     pyroscope_url             = var.grafana_pyroscope_url
     pyroscope_username        = var.grafana_pyroscope_username
-    fleet_management_url      = var.grafana_fleet_management_url
-    fleet_management_username = var.grafana_fleet_management_username
   }
 
   providers = {
