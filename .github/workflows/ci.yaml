@@ -58,8 +58,6 @@ jobs:
           - alb-controller
           - external-dns
           - argocd
-          - grafana-k8s-monitoring
-          - grafana-dashboards
           - monitoring
     steps:
       - uses: actions/checkout@v4

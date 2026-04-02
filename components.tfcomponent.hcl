@@ -204,23 +204,14 @@ component "argocd" {
   }
 }
 
-# ─── Grafana K8s Monitoring (Metrics + Logs + Traces + Profiling) ────────
+# ─── Grafana removal (destroy Helm releases) ─────────────────────────────
+# These removed blocks tell Stacks to destroy the deployed resources.
+# Delete these blocks + the grafana provider + component directories
+# after the next successful Stack apply.
 
-component "grafana_k8s_monitoring" {
+removed {
+  from   = component.grafana_k8s_monitoring
   source = "./terraform/components/grafana-k8s-monitoring"
-
-  inputs = {
-    cluster_name              = var.cluster_name
-    environment               = var.environment
-    prometheus_url            = var.grafana_prometheus_url
-    prometheus_username       = var.grafana_prometheus_username
-    loki_url                  = var.grafana_loki_url
-    loki_username             = var.grafana_loki_username
-    otlp_url                  = var.grafana_otlp_url
-    otlp_username             = var.grafana_otlp_username
-    pyroscope_url             = var.grafana_pyroscope_url
-    pyroscope_username        = var.grafana_pyroscope_username
-  }
 
   providers = {
     helm       = provider.helm.eks
@@ -228,7 +219,6 @@ component "grafana_k8s_monitoring" {
   }
 }
 
-# Clean up the old Alloy Helm release (failed/replaced by k8s-monitoring)
 removed {
   from   = component.grafana_alloy
   source = "./terraform/components/grafana-alloy"
@@ -257,15 +247,9 @@ component "monitoring" {
   }
 }
 
-# ─── Grafana Cloud Dashboards ────────────────────────────────────────────
-
-component "grafana_dashboards" {
+removed {
+  from   = component.grafana_dashboards
   source = "./terraform/components/grafana-dashboards"
-
-  inputs = {
-    environment  = var.environment
-    cluster_name = var.cluster_name
-  }
 
   providers = {
     grafana = provider.grafana.cloud

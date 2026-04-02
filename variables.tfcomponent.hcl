@@ -141,49 +141,6 @@ variable "grafana_cloud_stack_url" {
   ephemeral   = true
 }
 
-# ─── Grafana Cloud K8s Monitoring Endpoints ───────────────────────────────
-# Non-ephemeral: these flow to component inputs (not from varset).
-# The API token is read from a pre-existing K8s secret inside the component.
-
-variable "grafana_prometheus_url" {
-  type        = string
-  description = "Grafana Cloud Prometheus remote write URL"
-}
-
-variable "grafana_prometheus_username" {
-  type        = string
-  description = "Grafana Cloud Prometheus instance ID"
-}
-
-variable "grafana_loki_url" {
-  type        = string
-  description = "Grafana Cloud Loki push URL"
-}
-
-variable "grafana_loki_username" {
-  type        = string
-  description = "Grafana Cloud Loki instance ID"
-}
-
-variable "grafana_otlp_url" {
-  type        = string
-  description = "Grafana Cloud OTLP gateway URL"
-}
-
-variable "grafana_otlp_username" {
-  type        = string
-  description = "Grafana Cloud OTLP instance ID"
-}
-
-variable "grafana_pyroscope_url" {
-  type        = string
-  description = "Grafana Cloud Pyroscope URL"
-}
-
-variable "grafana_pyroscope_username" {
-  type        = string
-  description = "Grafana Cloud Pyroscope instance ID"
-}
 
 
 # ─── Monitoring ───────────────────────────────────────────────────────────
