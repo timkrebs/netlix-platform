@@ -54,8 +54,20 @@ spec:
         prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: web
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: web
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
         # Custom Go HTTP server — image tag managed by Kustomize overlay.
         # The placeholder name "netlix-web" is replaced by the images transformer.
         image: netlix-web

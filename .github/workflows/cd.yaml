@@ -43,6 +43,15 @@ jobs:
             -t "${REGISTRY}/${IMAGE_NAME}:latest" \
             app/server/
 
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          image-ref: ${{ steps.meta.outputs.uri }}
+          format: table
+          exit-code: '1'
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
       - name: Push to GHCR
         run: |
           docker push "${{ steps.meta.outputs.uri }}"

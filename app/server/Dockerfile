@@ -4,8 +4,8 @@ COPY go.mod ./
 COPY main.go ./
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /server .
 
-FROM alpine:3.20
-RUN apk --no-cache add ca-certificates
+FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=builder /server /server
 EXPOSE 8080
+USER nonroot:nonroot
 ENTRYPOINT ["/server"]

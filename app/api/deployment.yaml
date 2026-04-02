@@ -52,8 +52,20 @@ spec:
         prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: api
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: api
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
         # nicholasjackson/fake-service is the canonical Consul mesh demo image.
         # It exposes /health, /ready, simulates upstream calls, and emits
         # structured logs with request timing — ideal for observability demos.
