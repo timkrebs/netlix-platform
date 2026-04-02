@@ -220,7 +220,8 @@ component "grafana_alloy" {
   }
 
   providers = {
-    helm = provider.helm.eks
+    helm       = provider.helm.eks
+    kubernetes = provider.kubernetes.eks
   }
 }
 

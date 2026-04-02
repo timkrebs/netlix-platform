@@ -1,3 +1,26 @@
+# ─── Kubernetes Secret (write-only — credentials never stored in TF state) ─
+
+resource "kubernetes_secret_v1" "grafana_credentials" {
+  metadata {
+    name      = "alloy-grafana-credentials"
+    namespace = "grafana-system"
+  }
+
+  data_wo = {
+    GRAFANA_PROM_URL      = var.grafana_cloud_prometheus_url
+    GRAFANA_PROM_USERNAME = var.grafana_cloud_prometheus_username
+    GRAFANA_LOKI_URL      = var.grafana_cloud_loki_url
+    GRAFANA_LOKI_USERNAME = var.grafana_cloud_loki_username
+    GRAFANA_API_KEY       = var.grafana_cloud_api_key
+  }
+
+  data_wo_revision = 1
+
+  depends_on = [helm_release.alloy]
+}
+
+# ─── Grafana Alloy Helm Release ──────────────────────────────────────────
+
 resource "helm_release" "alloy" {
   name             = "alloy"
   namespace        = "grafana-system"
@@ -112,11 +135,11 @@ resource "helm_release" "alloy" {
 
           prometheus.remote_write "grafana_cloud" {
             endpoint {
-              url = "${var.grafana_cloud_prometheus_url}"
+              url = env("GRAFANA_PROM_URL")
 
               basic_auth {
-                username = "${var.grafana_cloud_prometheus_username}"
-                password = "${var.grafana_cloud_api_key}"
+                username = env("GRAFANA_PROM_USERNAME")
+                password = env("GRAFANA_API_KEY")
               }
             }
 
@@ -164,11 +187,11 @@ resource "helm_release" "alloy" {
 
           loki.write "grafana_cloud" {
             endpoint {
-              url = "${var.grafana_cloud_loki_url}"
+              url = env("GRAFANA_LOKI_URL")
 
               basic_auth {
-                username = "${var.grafana_cloud_loki_username}"
-                password = "${var.grafana_cloud_api_key}"
+                username = env("GRAFANA_LOKI_USERNAME")
+                password = env("GRAFANA_API_KEY")
               }
             }
 
@@ -274,6 +297,54 @@ resource "helm_release" "alloy" {
           }
         ALLOY
       }
+
+      extraEnv = [
+        {
+          name = "GRAFANA_PROM_URL"
+          valueFrom = {
+            secretKeyRef = {
+              name = "alloy-grafana-credentials"
+              key  = "GRAFANA_PROM_URL"
+            }
+          }
+        },
+        {
+          name = "GRAFANA_PROM_USERNAME"
+          valueFrom = {
+            secretKeyRef = {
+              name = "alloy-grafana-credentials"
+              key  = "GRAFANA_PROM_USERNAME"
+            }
+          }
+        },
+        {
+          name = "GRAFANA_LOKI_URL"
+          valueFrom = {
+            secretKeyRef = {
+              name = "alloy-grafana-credentials"
+              key  = "GRAFANA_LOKI_URL"
+            }
+          }
+        },
+        {
+          name = "GRAFANA_LOKI_USERNAME"
+          valueFrom = {
+            secretKeyRef = {
+              name = "alloy-grafana-credentials"
+              key  = "GRAFANA_LOKI_USERNAME"
+            }
+          }
+        },
+        {
+          name = "GRAFANA_API_KEY"
+          valueFrom = {
+            secretKeyRef = {
+              name = "alloy-grafana-credentials"
+              key  = "GRAFANA_API_KEY"
+            }
+          }
+        },
+      ]
     }
 
     serviceAccount = {
