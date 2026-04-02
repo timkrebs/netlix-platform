@@ -22,6 +22,10 @@ patches:
   target:
     kind: Deployment
     name: api
+- path: patch-vault-auth.yaml
+  target:
+    kind: VaultAuth
+    name: default
 - path: patch-vault-pki.yaml
   target:
     kind: VaultPKISecret

@@ -12,4 +12,6 @@ resources:
   # - ../mesh/proxy-defaults.yaml
   # - ../mesh/intentions.yaml
   - resource-quota.yaml
+  - vault-sa.yaml
+  - vault-auth.yaml
   - vault-pki-secret.yaml

@@ -128,7 +128,8 @@ component "vault_config" {
   }
 
   providers = {
-    vault = provider.vault.hcp
+    vault      = provider.vault.hcp
+    kubernetes = provider.kubernetes.eks
   }
 }
 
