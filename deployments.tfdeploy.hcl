@@ -68,6 +68,7 @@ deployment "dev" {
     grafana_cloud_loki_url            = store.varset.netlix-grafana.grafana_cloud_loki_url
     grafana_cloud_loki_username       = store.varset.netlix-grafana.grafana_cloud_loki_username
     grafana_cloud_api_key             = store.varset.netlix-grafana.grafana_cloud_api_key
+    grafana_cloud_stack_url           = store.varset.netlix-grafana.grafana_cloud_stack_url
     alert_email                       = ""
 
     # Metadata
