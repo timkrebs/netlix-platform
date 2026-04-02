@@ -126,7 +126,7 @@ resource "vault_jwt_auth_backend_role" "tfc" {
     sub = "organization:${var.tfc_organization_name}:project:*:stack:*:deployment:*:operation:*"
   }
 
-  user_claim     = "terraform_full_workspace"
+  user_claim     = "sub"
   token_policies = [vault_policy.tfc[0].name]
   token_ttl      = 1200
   token_max_ttl  = 3600
