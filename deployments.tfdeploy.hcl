@@ -15,11 +15,6 @@ store "varset" "netlix-hcp" {
   category = "terraform"
 }
 
-store "varset" "netlix-grafana" {
-  id       = "varset-Fg9fHuX6uujmB3KA"
-  category = "terraform"
-}
-
 # ─── Deployment: dev ───────────────────────────────────────────────────────
 
 deployment "dev" {
@@ -61,10 +56,6 @@ deployment "dev" {
     # Application
     github_org = "timkrebs"
     github_pat = "placeholder-replace-with-vault-dynamic-secret"
-
-    # Grafana Cloud (provider credentials — ephemeral, for dashboards only)
-    grafana_cloud_api_key   = store.varset.netlix-grafana.grafana_cloud_api_key
-    grafana_cloud_stack_url = store.varset.netlix-grafana.grafana_cloud_stack_url
 
     alert_email = ""
 
