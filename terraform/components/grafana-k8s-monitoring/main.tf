@@ -104,16 +104,4 @@ resource "helm_release" "k8s_monitoring" {
     value = local.grafana_token
   }
 
-  # ── OpenCost ────────────────────────────────────────────────────────────
-
-  set {
-    name  = "clusterMetrics.opencost.opencost.exporter.defaultClusterId"
-    value = var.cluster_name
-  }
-
-  set {
-    name  = "clusterMetrics.opencost.opencost.prometheus.external.url"
-    value = trimsuffix(var.prometheus_url, "/push")
-  }
-
 }
