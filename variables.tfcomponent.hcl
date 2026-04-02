@@ -126,21 +126,6 @@ variable "github_pat" {
   sensitive = true
 }
 
-# ─── Grafana Cloud (provider-only — ephemeral from varset) ────────────────
-
-variable "grafana_cloud_api_key" {
-  type        = string
-  description = "Grafana Cloud API key (flows to Grafana provider only)"
-  sensitive   = true
-  ephemeral   = true
-}
-
-variable "grafana_cloud_stack_url" {
-  type        = string
-  description = "Grafana Cloud stack URL (flows to Grafana provider only)"
-  ephemeral   = true
-}
-
 
 
 # ─── Monitoring ───────────────────────────────────────────────────────────

@@ -204,30 +204,6 @@ component "argocd" {
   }
 }
 
-# ─── Grafana removal (destroy Helm releases) ─────────────────────────────
-# These removed blocks tell Stacks to destroy the deployed resources.
-# Delete these blocks + the grafana provider + component directories
-# after the next successful Stack apply.
-
-removed {
-  from   = component.grafana_k8s_monitoring
-  source = "./terraform/components/grafana-k8s-monitoring"
-
-  providers = {
-    helm       = provider.helm.eks
-    kubernetes = provider.kubernetes.eks
-  }
-}
-
-removed {
-  from   = component.grafana_alloy
-  source = "./terraform/components/grafana-alloy"
-
-  providers = {
-    helm = provider.helm.eks
-  }
-}
-
 # ─── CloudWatch Monitoring (VPC Flow Logs + RDS + EKS Alarms) ────────────
 
 component "monitoring" {
@@ -247,11 +223,3 @@ component "monitoring" {
   }
 }
 
-removed {
-  from   = component.grafana_dashboards
-  source = "./terraform/components/grafana-dashboards"
-
-  providers = {
-    grafana = provider.grafana.cloud
-  }
-}
