@@ -58,7 +58,7 @@ jobs:
           - alb-controller
           - external-dns
           - argocd
-          - grafana-alloy
+          - grafana-k8s-monitoring
           - grafana-dashboards
           - monitoring
     steps:
