@@ -25,11 +25,7 @@ destinations:
 clusterMetrics:
   enabled: true
   opencost:
-    enabled: true
-    metricsSource: grafana-cloud-metrics
-    opencost:
-      prometheus:
-        existingSecretName: grafana-cloud-metrics-grafana-k8s-monitoring
+    enabled: false
   kepler:
     enabled: true
 clusterEvents:
