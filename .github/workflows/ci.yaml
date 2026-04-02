@@ -3,10 +3,10 @@ name: CI
 on:
   pull_request:
     branches: [dev, staging, main]
-    paths: ['terraform/**', '*.tfcomponent.hcl', '*.tfdeploy.hcl', '.terraform.lock.hcl', 'sentinel/**', 'app/**']
+    paths: ['terraform/**', '*.tfcomponent.hcl', '*.tfdeploy.hcl', '.terraform.lock.hcl', '.github/workflows/**', 'sentinel/**', 'app/**']
   push:
     branches: [dev, staging, main]
-    paths: ['terraform/**', '*.tfcomponent.hcl', '*.tfdeploy.hcl', '.terraform.lock.hcl', 'sentinel/**', 'app/**']
+    paths: ['terraform/**', '*.tfcomponent.hcl', '*.tfdeploy.hcl', '.terraform.lock.hcl', '.github/workflows/**', 'sentinel/**', 'app/**']
 
 jobs:
   terraform-fmt:
