@@ -1,5 +1,11 @@
 # Netlix Platform
 
+[![CI](https://github.com/timkrebs/netlix-platform/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/timkrebs/netlix-platform/actions/workflows/ci.yaml)
+
+[![CD](https://github.com/timkrebs/netlix-platform/actions/workflows/cd.yaml/badge.svg?branch=main)](https://github.com/timkrebs/netlix-platform/actions/workflows/cd.yaml)
+
+
+
 **Netlix** is a production-grade reference architecture showcasing HashiCorp technologies in a real-world AWS deployment. It simulates a SaaS startup running its platform on Kubernetes, demonstrating the complete HCP Terraform Stacks workflow — from VCS-driven runs through Sentinel policy checks and cost estimation to automated multi-environment infrastructure provisioning — integrated with HCP Vault Dedicated for secrets management, dynamic database credentials, and PKI certificate issuance.
 
 **Domain:** [netlix.dev](https://netlix.dev)

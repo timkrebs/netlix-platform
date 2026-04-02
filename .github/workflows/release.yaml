@@ -1,4 +1,4 @@
-name: Build & push Netlix app
+name: Release
 
 on:
   push:
@@ -6,10 +6,11 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/app
+  IMAGE_NAME: ${{ github.repository }}/web
 
 jobs:
-  build:
+  release:
+    name: Build, scan & publish release
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -31,10 +32,26 @@ jobs:
             type=semver,pattern={{version}}
             type=sha
 
-      - uses: docker/build-push-action@v5
+      - name: Build image
+        uses: docker/build-push-action@v5
         with:
-          context: ./app
-          push: true
+          context: ./app/server
+          push: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: APP_VERSION=${{ github.ref_name }}
+          load: true
+
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+          format: table
+          exit-code: '1'
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+      - name: Push to GHCR
+        run: |
+          for tag in $(echo '${{ steps.meta.outputs.tags }}' | tr ',' '\n'); do
+            docker push "${tag}"
+          done

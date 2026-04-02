@@ -191,11 +191,12 @@ component "argocd" {
   source = "./terraform/components/argocd"
 
   inputs = {
-    gitops_repo_url  = "https://github.com/${var.github_org}/netlix-platform.git"
-    target_namespace = "consul"
-    environment      = var.environment
-    domain           = var.base_domain
-    certificate_arn  = component.dns.certificate_arn
+    gitops_repo_url        = "https://github.com/${var.github_org}/netlix-platform.git"
+    gitops_target_revision = var.environment
+    target_namespace       = "consul"
+    environment            = var.environment
+    domain                 = var.base_domain
+    certificate_arn        = component.dns.certificate_arn
   }
 
   providers = {

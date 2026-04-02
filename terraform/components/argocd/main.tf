@@ -50,7 +50,7 @@ resource "helm_release" "argocd" {
           project = "default"
           source = {
             repoURL        = var.gitops_repo_url
-            targetRevision = "HEAD"
+            targetRevision = var.gitops_target_revision
             path           = "app/overlays/${var.environment}"
           }
           destination = {
