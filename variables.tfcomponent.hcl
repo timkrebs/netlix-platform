@@ -159,6 +159,12 @@ variable "grafana_cloud_api_key" {
   ephemeral   = true
 }
 
+variable "grafana_cloud_stack_url" {
+  type        = string
+  description = "Grafana Cloud stack URL (e.g. https://yourstack.grafana.net)"
+  default     = ""
+}
+
 # ─── Monitoring ───────────────────────────────────────────────────────────
 
 variable "alert_email" {

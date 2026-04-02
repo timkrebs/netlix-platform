@@ -59,6 +59,7 @@ jobs:
           - external-dns
           - argocd
           - grafana-alloy
+          - grafana-dashboards
           - monitoring
     steps:
       - uses: actions/checkout@v4

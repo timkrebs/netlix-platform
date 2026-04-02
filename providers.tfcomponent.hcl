@@ -41,6 +41,10 @@ required_providers {
     source  = "hashicorp/cloudinit"
     version = "~> 2.0"
   }
+  grafana = {
+    source  = "grafana/grafana"
+    version = "~> 3.0"
+  }
 }
 
 # ─── AWS Provider (OIDC workload identity — no static credentials) ─────────
@@ -129,4 +133,13 @@ provider "null" "default" {
 
 provider "cloudinit" "default" {
   config {}
+}
+
+# ─── Grafana Cloud Provider ──────────────────────────────────────────────
+
+provider "grafana" "cloud" {
+  config {
+    url  = var.grafana_cloud_stack_url
+    auth = var.grafana_cloud_api_key
+  }
 }

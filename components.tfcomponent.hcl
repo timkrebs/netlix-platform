@@ -242,3 +242,18 @@ component "monitoring" {
     aws = provider.aws.main
   }
 }
+
+# ─── Grafana Cloud Dashboards ────────────────────────────────────────────
+
+component "grafana_dashboards" {
+  source = "./terraform/components/grafana-dashboards"
+
+  inputs = {
+    environment  = var.environment
+    cluster_name = var.cluster_name
+  }
+
+  providers = {
+    grafana = provider.grafana.cloud
+  }
+}
