@@ -76,9 +76,7 @@ deployment "dev" {
     grafana_otlp_username             = "1580862"
     grafana_pyroscope_url             = "https://profiles-prod-002.grafana.net:443"
     grafana_pyroscope_username        = "1580862"
-    grafana_fleet_management_url      = "https://fleet-management-prod-011.grafana.net"
-    grafana_fleet_management_username = "1580862"
-    alert_email                       = ""
+    alert_email = ""
 
     # Metadata
     environment           = "dev"

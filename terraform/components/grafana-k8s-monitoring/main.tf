@@ -15,13 +15,6 @@ data "kubernetes_secret_v1" "grafana_credentials" {
 locals {
   grafana_token = data.kubernetes_secret_v1.grafana_credentials.data["token"]
 
-  alloy_subcharts = [
-    "alloy-metrics",
-    "alloy-singleton",
-    "alloy-logs",
-    "alloy-receiver",
-    "alloy-profiles",
-  ]
 }
 
 resource "helm_release" "k8s_monitoring" {
@@ -123,29 +116,4 @@ resource "helm_release" "k8s_monitoring" {
     value = trimsuffix(var.prometheus_url, "/push")
   }
 
-  # ── Fleet Management (all Alloy sub-charts) ─────────────────────────────
-
-  dynamic "set" {
-    for_each = local.alloy_subcharts
-    content {
-      name  = "${set.value}.remoteConfig.url"
-      value = var.fleet_management_url
-    }
-  }
-
-  dynamic "set" {
-    for_each = local.alloy_subcharts
-    content {
-      name  = "${set.value}.remoteConfig.auth.username"
-      value = var.fleet_management_username
-    }
-  }
-
-  dynamic "set_sensitive" {
-    for_each = local.alloy_subcharts
-    content {
-      name  = "${set_sensitive.value}.remoteConfig.auth.password"
-      value = local.grafana_token
-    }
-  }
 }

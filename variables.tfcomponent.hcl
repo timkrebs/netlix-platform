@@ -185,15 +185,6 @@ variable "grafana_pyroscope_username" {
   description = "Grafana Cloud Pyroscope instance ID"
 }
 
-variable "grafana_fleet_management_url" {
-  type        = string
-  description = "Grafana Cloud Fleet Management URL"
-}
-
-variable "grafana_fleet_management_username" {
-  type        = string
-  description = "Grafana Cloud Fleet Management instance ID"
-}
 
 # ─── Monitoring ───────────────────────────────────────────────────────────
 
