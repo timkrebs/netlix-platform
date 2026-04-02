@@ -4,12 +4,11 @@ identity_token "aws" {
   audience = ["aws.workload.identity"]
 }
 
-# ─── Variable set stores ──────────────────────────────────────────────────
-
-store "varset" "netlix-vault" {
-  id       = "varset-4NoitsJtiV3MSVcg"
-  category = "terraform"
+identity_token "vault" {
+  audience = ["vault.workload.identity"]
 }
+
+# ─── Variable set stores ──────────────────────────────────────────────────
 
 store "varset" "netlix-hcp" {
   id       = "varset-N9WxeF7Jw3G6LhdD"
@@ -29,7 +28,7 @@ deployment "dev" {
     hcp_client_secret  = store.varset.netlix-hcp.hcp_client_secret
     vault_cluster_id   = "netlix-vault"
     vault_address      = "https://netlix-vault-public-vault-7ebc141d.dffa8084.z1.hashicorp.cloud:8200"
-    vault_token        = store.varset.netlix-vault.vault_token
+    vault_identity_token = identity_token.vault.jwt
     hvn_id             = "hvn"
 
     # Networking

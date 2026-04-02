@@ -37,7 +37,7 @@ variable "vault_address" {
   type = string
 }
 
-variable "vault_token" {
+variable "vault_identity_token" {
   type      = string
   sensitive = true
   ephemeral = true

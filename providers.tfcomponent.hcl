@@ -79,8 +79,13 @@ provider "hcp" "main" {
 provider "vault" "hcp" {
   config {
     address   = var.vault_address
-    token     = var.vault_token
     namespace = "admin"
+
+    auth_login_jwt {
+      mount = "jwt-tfc"
+      role  = "tfc-stacks"
+      jwt   = var.vault_identity_token
+    }
   }
 }
 
