@@ -8,17 +8,6 @@ resource "kubernetes_namespace_v1" "datadog" {
   }
 }
 
-resource "kubernetes_secret_v1" "datadog" {
-  metadata {
-    name      = "datadog-secret"
-    namespace = kubernetes_namespace_v1.datadog.metadata[0].name
-  }
-
-  data = {
-    "api-key" = var.datadog_api_key
-  }
-}
-
 resource "helm_release" "datadog_operator" {
   name       = "datadog-operator"
   namespace  = kubernetes_namespace_v1.datadog.metadata[0].name
@@ -46,7 +35,7 @@ resource "kubernetes_manifest" "datadog_agent" {
         site        = var.datadog_site
         credentials = {
           apiSecret = {
-            secretName = kubernetes_secret_v1.datadog.metadata[0].name
+            secretName = "datadog-secret"
             keyName    = "api-key"
           }
         }

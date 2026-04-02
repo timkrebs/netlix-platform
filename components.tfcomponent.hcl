@@ -229,7 +229,6 @@ component "datadog_operator" {
   source = "./terraform/components/datadog-operator"
 
   inputs = {
-    datadog_api_key = var.datadog_api_key
     cluster_name    = var.cluster_name
     environment     = var.environment
     datadog_site    = var.datadog_site

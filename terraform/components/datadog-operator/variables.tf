@@ -1,9 +1,3 @@
-variable "datadog_api_key" {
-  type        = string
-  sensitive   = true
-  description = "Datadog API key"
-}
-
 variable "cluster_name" {
   type        = string
   description = "EKS cluster name for Datadog agent tagging"
