@@ -126,6 +126,47 @@ variable "github_pat" {
   sensitive = true
 }
 
+# ─── Grafana Cloud ────────────────────────────────────────────────────────
+
+variable "grafana_cloud_prometheus_url" {
+  type        = string
+  description = "Grafana Cloud Prometheus remote write endpoint"
+  default     = ""
+}
+
+variable "grafana_cloud_prometheus_username" {
+  type        = string
+  description = "Grafana Cloud Prometheus instance ID"
+  default     = ""
+}
+
+variable "grafana_cloud_loki_url" {
+  type        = string
+  description = "Grafana Cloud Loki push endpoint"
+  default     = ""
+}
+
+variable "grafana_cloud_loki_username" {
+  type        = string
+  description = "Grafana Cloud Loki instance ID"
+  default     = ""
+}
+
+variable "grafana_cloud_api_key" {
+  type        = string
+  description = "Grafana Cloud API key"
+  sensitive   = true
+  ephemeral   = true
+}
+
+# ─── Monitoring ───────────────────────────────────────────────────────────
+
+variable "alert_email" {
+  type        = string
+  description = "Email for CloudWatch alarm notifications"
+  default     = ""
+}
+
 # ─── Metadata ──────────────────────────────────────────────────────────────
 
 variable "environment" {

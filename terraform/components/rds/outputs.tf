@@ -9,3 +9,4 @@ output "admin_password" {
   sensitive = true
 }
 output "db_name" { value = var.db_name }
+output "instance_id" { value = module.rds.db_instance_identifier }

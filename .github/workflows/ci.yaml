@@ -58,6 +58,8 @@ jobs:
           - alb-controller
           - external-dns
           - argocd
+          - grafana-alloy
+          - monitoring
     steps:
       - uses: actions/checkout@v4
 

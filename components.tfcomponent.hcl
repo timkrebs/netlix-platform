@@ -203,3 +203,42 @@ component "argocd" {
     helm = provider.helm.eks
   }
 }
+
+# ─── Grafana Alloy (Metrics + Logs → Grafana Cloud) ─────────────────────
+
+component "grafana_alloy" {
+  source = "./terraform/components/grafana-alloy"
+
+  inputs = {
+    grafana_cloud_prometheus_url      = var.grafana_cloud_prometheus_url
+    grafana_cloud_prometheus_username = var.grafana_cloud_prometheus_username
+    grafana_cloud_loki_url            = var.grafana_cloud_loki_url
+    grafana_cloud_loki_username       = var.grafana_cloud_loki_username
+    grafana_cloud_api_key             = var.grafana_cloud_api_key
+    cluster_name                      = var.cluster_name
+    environment                       = var.environment
+  }
+
+  providers = {
+    helm = provider.helm.eks
+  }
+}
+
+# ─── CloudWatch Monitoring (VPC Flow Logs + RDS + EKS Alarms) ────────────
+
+component "monitoring" {
+  source = "./terraform/components/monitoring"
+
+  inputs = {
+    environment             = var.environment
+    project                 = var.project
+    vpc_flow_log_group_arn = component.networking.flow_log_cloudwatch_log_group_arn
+    rds_instance_id         = component.rds.instance_id
+    eks_cluster_name        = var.cluster_name
+    alert_email             = var.alert_email
+  }
+
+  providers = {
+    aws = provider.aws.main
+  }
+}

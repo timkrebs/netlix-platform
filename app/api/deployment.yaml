@@ -33,11 +33,6 @@ spec:
     metadata:
       labels:
         app: api
-        # Datadog Unified Service Tagging — correlates metrics, logs, and
-        # traces under the same service/env/version in every Datadog view.
-        tags.datadoghq.com/env: "dev"
-        tags.datadoghq.com/service: "api"
-        tags.datadoghq.com/version: "v0.26.2"
       annotations:
         # ── Consul service mesh ──────────────────────────────────────────────
         consul.hashicorp.com/connect-inject: "true"
@@ -79,24 +74,6 @@ spec:
           value: "http"
         - name: LISTEN_ADDR
           value: "0.0.0.0:8080"
-        # ── Datadog APM + trace correlation ───────────────────────────────────
-        # DD_AGENT_HOST routes StatsD metrics and APM traces to the local
-        # Datadog agent DaemonSet pod on the same node (hostIP via downward API).
-        - name: DD_AGENT_HOST
-          valueFrom:
-            fieldRef:
-              fieldPath: status.hostIP
-        # DD_ENTITY_ID ties container-level metrics to the right Datadog entity.
-        - name: DD_ENTITY_ID
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.uid
-        - name: DD_ENV
-          value: "dev"
-        - name: DD_SERVICE
-          value: "api"
-        - name: DD_VERSION
-          value: "v0.26.2"
         ports:
         - containerPort: 8080
         resources:

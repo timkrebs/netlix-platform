@@ -33,10 +33,6 @@ spec:
     metadata:
       labels:
         app: web
-        # Datadog Unified Service Tagging
-        tags.datadoghq.com/env: "dev"
-        tags.datadoghq.com/service: "web"
-        tags.datadoghq.com/version: "v0.26.2"
       annotations:
         # ── Consul service mesh ──────────────────────────────────────────────
         consul.hashicorp.com/connect-inject: "true"
@@ -89,21 +85,6 @@ spec:
           value: "/vault/secrets/tls.crt"
         - name: TLS_KEY_PATH
           value: "/vault/secrets/tls.key"
-        # ── Datadog APM + trace correlation ───────────────────────────────────
-        - name: DD_AGENT_HOST
-          valueFrom:
-            fieldRef:
-              fieldPath: status.hostIP
-        - name: DD_ENTITY_ID
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.uid
-        - name: DD_ENV
-          value: "dev"
-        - name: DD_SERVICE
-          value: "web"
-        - name: DD_VERSION
-          value: "latest"
         ports:
         - containerPort: 9090
         resources:
