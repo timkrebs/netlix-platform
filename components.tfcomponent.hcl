@@ -204,15 +204,36 @@ component "argocd" {
   }
 }
 
-# ─── Grafana Alloy (Metrics + Logs → Grafana Cloud) ─────────────────────
+# ─── Grafana K8s Monitoring (Metrics + Logs + Traces + Profiling) ────────
 
-component "grafana_alloy" {
-  source = "./terraform/components/grafana-alloy"
+component "grafana_k8s_monitoring" {
+  source = "./terraform/components/grafana-k8s-monitoring"
 
   inputs = {
-    cluster_name = var.cluster_name
-    environment  = var.environment
+    cluster_name              = var.cluster_name
+    environment               = var.environment
+    prometheus_url            = var.grafana_prometheus_url
+    prometheus_username       = var.grafana_prometheus_username
+    loki_url                  = var.grafana_loki_url
+    loki_username             = var.grafana_loki_username
+    otlp_url                  = var.grafana_otlp_url
+    otlp_username             = var.grafana_otlp_username
+    pyroscope_url             = var.grafana_pyroscope_url
+    pyroscope_username        = var.grafana_pyroscope_username
+    fleet_management_url      = var.grafana_fleet_management_url
+    fleet_management_username = var.grafana_fleet_management_username
   }
+
+  providers = {
+    helm       = provider.helm.eks
+    kubernetes = provider.kubernetes.eks
+  }
+}
+
+# Clean up the old Alloy Helm release (failed/replaced by k8s-monitoring)
+removed {
+  from   = component.grafana_alloy
+  source = "./terraform/components/grafana-alloy"
 
   providers = {
     helm = provider.helm.eks

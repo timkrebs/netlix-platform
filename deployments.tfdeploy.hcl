@@ -62,9 +62,22 @@ deployment "dev" {
     github_org = "timkrebs"
     github_pat = "placeholder-replace-with-vault-dynamic-secret"
 
-    # Grafana Cloud (only provider credentials — Alloy reads from K8s secret)
+    # Grafana Cloud (provider credentials — ephemeral, for dashboards only)
     grafana_cloud_api_key   = store.varset.netlix-grafana.grafana_cloud_api_key
     grafana_cloud_stack_url = store.varset.netlix-grafana.grafana_cloud_stack_url
+
+    # Grafana Cloud K8s Monitoring endpoints (non-ephemeral — flow to component)
+    # The API token is NOT passed here; it's read from K8s secret "grafana-cloud-credentials" in kube-system.
+    grafana_prometheus_url            = "https://prometheus-prod-65-prod-eu-west-2.grafana.net/api/prom/push"
+    grafana_prometheus_username       = "3085952"
+    grafana_loki_url                  = "https://logs-prod-012.grafana.net/loki/api/v1/push"
+    grafana_loki_username             = "1538651"
+    grafana_otlp_url                  = "https://otlp-gateway-prod-eu-west-2.grafana.net/otlp"
+    grafana_otlp_username             = "1580862"
+    grafana_pyroscope_url             = "https://profiles-prod-002.grafana.net:443"
+    grafana_pyroscope_username        = "1580862"
+    grafana_fleet_management_url      = "https://fleet-management-prod-011.grafana.net"
+    grafana_fleet_management_username = "1580862"
     alert_email                       = ""
 
     # Metadata
