@@ -602,7 +602,7 @@ resource "aws_cloudwatch_dashboard" "main" {
         width  = 24
         height = 3
         properties = {
-          title  = "All Alarms"
+          title = "All Alarms"
           alarms = [
             aws_cloudwatch_metric_alarm.rds_cpu.arn,
             aws_cloudwatch_metric_alarm.rds_free_storage.arn,

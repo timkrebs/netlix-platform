@@ -35,10 +35,10 @@ module "eks" {
   enable_irsa = true
 
   cluster_addons = {
-    coredns                         = { most_recent = true }
-    kube-proxy                      = { most_recent = true }
-    vpc-cni                         = { most_recent = true, service_account_role_arn = module.vpc_cni_irsa.iam_role_arn }
-    aws-ebs-csi-driver              = { most_recent = true, service_account_role_arn = module.ebs_csi_irsa.iam_role_arn }
+    coredns            = { most_recent = true }
+    kube-proxy         = { most_recent = true }
+    vpc-cni            = { most_recent = true, service_account_role_arn = module.vpc_cni_irsa.iam_role_arn }
+    aws-ebs-csi-driver = { most_recent = true, service_account_role_arn = module.ebs_csi_irsa.iam_role_arn }
     amazon-cloudwatch-observability = {
       addon_version            = "v4.10.3-eksbuild.1"
       service_account_role_arn = module.cloudwatch_observability_irsa.iam_role_arn
