@@ -28,11 +28,12 @@ resource "aws_route53_record" "cert_validation" {
     dvo.resource_record_name => dvo...
   }
 
-  zone_id = data.aws_route53_zone.main.zone_id
-  name    = each.value[0].resource_record_name
-  type    = each.value[0].resource_record_type
-  ttl     = 60
-  records = [each.value[0].resource_record_value]
+  allow_overwrite = true
+  zone_id         = data.aws_route53_zone.main.zone_id
+  name            = each.value[0].resource_record_name
+  type            = each.value[0].resource_record_type
+  ttl             = 60
+  records         = [each.value[0].resource_record_value]
 }
 
 # ACM Certificate Validation
