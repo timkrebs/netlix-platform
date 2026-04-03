@@ -224,4 +224,15 @@ component "monitoring" {
   }
 }
 
+# ─── Removed: Datadog Operator (replaced by CloudWatch Container Insights) ─
+
+removed {
+  from   = component.datadog_operator
+  source = "./terraform/components/datadog-operator"
+
+  providers = {
+    helm       = provider.helm.eks
+    kubernetes = provider.kubernetes.eks
+  }
+}
 
