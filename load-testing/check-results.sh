@@ -44,11 +44,14 @@ echo "  Min requests/sec  : ${MIN_RPS}"
 echo ""
 
 # Parse the "Aggregated" row from Locust CSV
+# Locust may output the name quoted ("Aggregated") or unquoted (,Aggregated,)
+# depending on the version, so we match both patterns.
+#
 # Columns: Type,Name,Request Count,Failure Count,Median Response Time,
 #           Average Response Time,Min Response Time,Max Response Time,
 #           Average Content Size,Requests/s,Failures/s,
 #           50%,66%,75%,80%,90%,95%,98%,99%,99.9%,99.99%,100%
-AGGREGATED=$(grep '"Aggregated"' "$STATS_FILE" || true)
+AGGREGATED=$(grep -i 'Aggregated' "$STATS_FILE" | grep -v '^Type' || true)
 
 if [[ -z "$AGGREGATED" ]]; then
   echo "ERROR: No 'Aggregated' row found in $STATS_FILE"
@@ -57,7 +60,10 @@ if [[ -z "$AGGREGATED" ]]; then
   exit 2
 fi
 
-# Extract fields (CSV with quoted strings)
+# Strip any double quotes so field parsing is consistent
+AGGREGATED=$(echo "$AGGREGATED" | tr -d '"')
+
+# Extract fields (comma-separated, quotes stripped)
 REQUEST_COUNT=$(echo "$AGGREGATED" | awk -F',' '{print $3}')
 FAILURE_COUNT=$(echo "$AGGREGATED" | awk -F',' '{print $4}')
 AVG_MS=$(echo "$AGGREGATED" | awk -F',' '{print $6}')
