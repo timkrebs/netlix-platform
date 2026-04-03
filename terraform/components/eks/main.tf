@@ -34,11 +34,6 @@ module "eks" {
 
   enable_irsa = true
 
-  # Explicitly disable EKS Auto Mode (required by AWS provider >= 5.75)
-  cluster_compute_config = {
-    enabled = false
-  }
-
   cluster_addons = {
     coredns            = { most_recent = true }
     kube-proxy         = { most_recent = true }
