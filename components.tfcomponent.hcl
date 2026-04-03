@@ -6,6 +6,7 @@ component "dns" {
   inputs = {
     domain      = var.base_domain
     cluster_env = var.environment
+    zone_id     = var.route53_zone_id
   }
 
   providers = {

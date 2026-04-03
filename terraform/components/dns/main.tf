@@ -1,8 +1,7 @@
-# Route53 Hosted Zone
-resource "aws_route53_zone" "main" {
-  name = var.domain
-
-  tags = { component = "dns" }
+# Use the pre-existing Route53 hosted zone — never recreate it, as that
+# changes the nameservers and breaks the registrar delegation.
+data "aws_route53_zone" "main" {
+  zone_id = var.zone_id
 }
 
 # ACM Wildcard Certificate
@@ -29,7 +28,7 @@ resource "aws_route53_record" "cert_validation" {
     dvo.resource_record_name => dvo...
   }
 
-  zone_id = aws_route53_zone.main.zone_id
+  zone_id = data.aws_route53_zone.main.zone_id
   name    = each.value[0].resource_record_name
   type    = each.value[0].resource_record_type
   ttl     = 60
