@@ -101,14 +101,60 @@ resource "vault_policy" "tfc" {
   name  = "tfc-policy"
 
   policy = <<-EOT
-    # TFC needs full admin access to manage Vault configuration across
-    # namespaces, auth backends, PKI, database secrets, KV, and policies.
-    path "*" {
+    # Namespace management
+    path "sys/namespaces/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+
+    # Auth backends (kubernetes, jwt-tfc, userpass)
+    path "sys/auth/*" {
+      capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+    }
+    path "auth/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+
+    # Policy management
+    path "sys/policies/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+    path "sys/policy/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+
+    # Secrets engine mounts (kv, database, pki)
+    path "sys/mounts/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+    path "sys/mounts" {
+      capabilities = ["read", "list"]
+    }
+
+    # KV secrets engine
+    path "secret/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+
+    # Database secrets engine
+    path "database/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+
+    # PKI secrets engines (root + intermediate)
+    path "pki/*" {
+      capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+    }
+    path "pki_int/*" {
       capabilities = ["create", "read", "update", "delete", "list", "sudo"]
     }
 
-    # Allow creating child namespaces
-    path "sys/namespaces/*" {
+    # Lease management
+    path "sys/leases/*" {
+      capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+    }
+
+    # Secrets sync (GitHub)
+    path "sys/sync/*" {
       capabilities = ["create", "read", "update", "delete", "list"]
     }
   EOT

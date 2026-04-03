@@ -2,6 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
+  - namespace.yaml
   - ../web/deployment.yaml
   - ../web/pdb.yaml
   - ../web/hpa.yaml
@@ -15,3 +16,4 @@ resources:
   - vault-sa.yaml
   - vault-auth.yaml
   - vault-pki-secret.yaml
+  - network-policies.yaml

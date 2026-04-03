@@ -1,0 +1,162 @@
+# ─── Default deny all traffic in consul namespace ─────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: consul
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# ─── Web pod: allow ALB ingress, Envoy metrics, mesh + DNS + Datadog egress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: web-policy
+  namespace: consul
+spec:
+  podSelector:
+    matchLabels:
+      app: web
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # ALB sends traffic directly to pod IP (target-type=ip)
+    - ports:
+        - protocol: TCP
+          port: 9090
+    # Prometheus metrics from Envoy sidecar
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 20200
+  egress:
+    # Upstream: web → api via Envoy sidecar (localhost, but NetworkPolicy
+    # applies to pod-level traffic after Envoy proxies)
+    - to:
+        - podSelector:
+            matchLabels:
+              app: api
+      ports:
+        - protocol: TCP
+          port: 8080
+    # DNS resolution (kube-dns)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Consul connect-inject and control plane
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: consul
+      ports:
+        - protocol: TCP
+          port: 8301
+        - protocol: TCP
+          port: 8502
+        - protocol: TCP
+          port: 20000
+    # Vault Secrets Operator
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: vault-secrets-operator-system
+      ports:
+        - protocol: TCP
+          port: 8200
+    # Datadog APM + DogStatsD
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: datadog
+      ports:
+        - protocol: TCP
+          port: 8126
+        - protocol: UDP
+          port: 8125
+    # Allow egress to any pod in same namespace (Envoy mesh traffic)
+    - to:
+        - podSelector: {}
+---
+# ─── API pod: allow ingress from web, Envoy metrics; mesh + DNS egress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-policy
+  namespace: consul
+spec:
+  podSelector:
+    matchLabels:
+      app: api
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Traffic from web pods (via Envoy mesh)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: web
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Prometheus metrics from Envoy sidecar
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 20200
+  egress:
+    # DNS resolution (kube-dns)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Consul connect-inject and control plane
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: consul
+      ports:
+        - protocol: TCP
+          port: 8301
+        - protocol: TCP
+          port: 8502
+        - protocol: TCP
+          port: 20000
+    # Vault Secrets Operator
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: vault-secrets-operator-system
+      ports:
+        - protocol: TCP
+          port: 8200
+    # Datadog APM + DogStatsD
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: datadog
+      ports:
+        - protocol: TCP
+          port: 8126
+        - protocol: UDP
+          port: 8125
+    # Allow egress to any pod in same namespace (Envoy mesh traffic)
+    - to:
+        - podSelector: {}
