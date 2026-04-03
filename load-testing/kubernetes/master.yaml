@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: locust-scripts
+  namespace: load-testing
+  labels:
+    app.kubernetes.io/name: locust
+    app.kubernetes.io/component: scripts
+data:
+  locustfile.py: |
+    # Injected at deploy time — see load-testing/locustfile.py for source
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: locust-master
+  namespace: load-testing
+  labels:
+    app.kubernetes.io/name: locust
+    app.kubernetes.io/component: master
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: locust
+    app.kubernetes.io/component: master
+  ports:
+    - name: web-ui
+      port: 8089
+      targetPort: 8089
+    - name: master-p1
+      port: 5557
+      targetPort: 5557
+    - name: master-p2
+      port: 5558
+      targetPort: 5558
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: locust-master
+  namespace: load-testing
+  labels:
+    app.kubernetes.io/name: locust
+    app.kubernetes.io/component: master
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: locust
+      app.kubernetes.io/component: master
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: locust
+        app.kubernetes.io/component: master
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: locust
+          image: locustio/locust:2.32.4
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          args:
+            - --master
+            - --locustfile
+            - /scripts/locustfile.py
+            - --host
+            - http://web.consul.svc.cluster.local:9090
+            # Headless mode args are added by the workflow via env overrides
+          env:
+            - name: LOCUST_MAX_FAIL_RATIO
+              value: "0.05"
+            - name: LOCUST_MAX_P95_MS
+              value: "2000"
+          ports:
+            - containerPort: 8089
+              name: web-ui
+            - containerPort: 5557
+              name: master-p1
+            - containerPort: 5558
+              name: master-p2
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: scripts
+          configMap:
+            name: locust-scripts
+        - name: tmp
+          emptyDir: {}

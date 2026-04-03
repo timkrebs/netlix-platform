@@ -62,6 +62,12 @@ customer demos and internal enablement.
 | 43 | No alerting or SLO definitions | Done | Alloy ships Prometheus alert rules (pod restarts, OOMKill, 5xx, cert expiry, node not ready); CloudWatch alarms for RDS/EKS |
 | 44 | VPC Flow Logs not analyzed | Done | CloudWatch metric filter on REJECT actions + alarm (>100 rejected/5min); SNS notifications |
 
+### Performance & Load Testing
+
+| # | Item | Status | Resolution |
+|---|------|--------|------------|
+| 47 | No load testing framework | Done | Distributed Locust setup (master + workers) on EKS; GitHub Actions workflow with configurable thresholds; validates HPA autoscaling |
+
 ### Disaster Recovery
 
 | # | Item | Status | Resolution |

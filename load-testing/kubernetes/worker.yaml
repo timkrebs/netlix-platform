@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: locust-worker
+  namespace: load-testing
+  labels:
+    app.kubernetes.io/name: locust
+    app.kubernetes.io/component: worker
+spec:
+  # Scale workers to increase load generation capacity.
+  # Each worker can simulate ~500-1000 concurrent users depending on test complexity.
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: locust
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: locust
+        app.kubernetes.io/component: worker
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: locust
+          image: locustio/locust:2.32.4
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          args:
+            - --worker
+            - --master-host
+            - locust-master.load-testing.svc.cluster.local
+            - --locustfile
+            - /scripts/locustfile.py
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: scripts
+          configMap:
+            name: locust-scripts
+        - name: tmp
+          emptyDir: {}
