@@ -224,18 +224,4 @@ component "monitoring" {
   }
 }
 
-# ─── Datadog Operator (Agent + APM + Logs) ────────────────────────────────
-
-component "datadog_operator" {
-  source = "./terraform/components/datadog-operator"
-
-  inputs = {
-    environment = var.environment
-  }
-
-  providers = {
-    helm       = provider.helm.eks
-    kubernetes = provider.kubernetes.eks
-  }
-}
 

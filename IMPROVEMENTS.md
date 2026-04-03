@@ -58,9 +58,10 @@ customer demos and internal enablement.
 
 | # | Item | Status | Resolution |
 |---|------|--------|------------|
-| 42 | Datadog configured but agent not deployed | Done | Replaced with Grafana Alloy (Helm) — metrics + logs to Grafana Cloud; removed all Datadog config |
-| 43 | No alerting or SLO definitions | Done | Alloy ships Prometheus alert rules (pod restarts, OOMKill, 5xx, cert expiry, node not ready); CloudWatch alarms for RDS/EKS |
+| 42 | Datadog configured but agent not deployed | Done | Replaced with AWS CloudWatch Container Insights (EKS addon); IRSA role for agent; removed all Datadog config |
+| 43 | No alerting or SLO definitions | Done | 10 CloudWatch alarms (pod CPU/memory/restarts, node CPU/memory, RDS, VPC flow logs); SNS notifications |
 | 44 | VPC Flow Logs not analyzed | Done | CloudWatch metric filter on REJECT actions + alarm (>100 rejected/5min); SNS notifications |
+| 48 | No observability dashboard | Done | CloudWatch dashboard with 6 rows: cluster, pods, health, RDS, network, alarm status |
 
 ### Performance & Load Testing
 
