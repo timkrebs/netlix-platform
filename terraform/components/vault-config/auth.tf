@@ -101,38 +101,11 @@ resource "vault_policy" "tfc" {
   name  = "tfc-policy"
 
   policy = <<-EOT
-    # Namespace management (create/manage child namespaces)
-    path "sys/namespaces/*" {
-      capabilities = ["create", "read", "update", "delete", "list"]
-    }
-
-    # Sys operations within child namespaces — needed because TFC
-    # authenticates at root but manages resources in admin/dev, admin/staging.
-    # Vault requires sys/* access at the policy namespace to operate in children.
-    path "sys/*" {
-      capabilities = ["create", "read", "update", "delete", "list", "sudo"]
-    }
-
-    # Auth backends (kubernetes, jwt-tfc, userpass)
-    path "auth/*" {
-      capabilities = ["create", "read", "update", "delete", "list"]
-    }
-
-    # KV secrets engine
-    path "secret/*" {
-      capabilities = ["create", "read", "update", "delete", "list"]
-    }
-
-    # Database secrets engine
-    path "database/*" {
-      capabilities = ["create", "read", "update", "delete", "list"]
-    }
-
-    # PKI secrets engines (root + intermediate)
-    path "pki/*" {
-      capabilities = ["create", "read", "update", "delete", "list", "sudo"]
-    }
-    path "pki_int/*" {
+    # TFC manages Vault configuration across child namespaces (admin/dev,
+    # admin/staging) including auth backends, secrets engines, PKI, policies,
+    # and database connections. HCP Vault requires full access at the parent
+    # namespace for cross-namespace operations — scoped paths do not propagate.
+    path "*" {
       capabilities = ["create", "read", "update", "delete", "list", "sudo"]
     }
   EOT
