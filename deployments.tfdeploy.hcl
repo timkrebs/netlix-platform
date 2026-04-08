@@ -15,6 +15,13 @@ store "varset" "netlix-hcp" {
   category = "terraform"
 }
 
+# Vault secrets varset (credentials for Vault operations, GitHub PAT, etc.)
+# TODO: Create this varset in HCP Terraform UI, then replace the ID below
+store "varset" "netlix-vault" {
+  id       = "varset-PLACEHOLDER_REPLACE_WITH_ACTUAL_ID"
+  category = "terraform"
+}
+
 # ─── Deployment: dev ───────────────────────────────────────────────────────
 
 deployment "dev" {
@@ -55,12 +62,64 @@ deployment "dev" {
 
     # Application
     github_org = "timkrebs"
-    github_pat = "placeholder-replace-with-vault-dynamic-secret"
+    github_pat = store.varset.netlix-vault.github_pat
 
     alert_email = ""
 
     # Metadata
     environment           = "dev"
+    project               = "netlix"
+    tfc_organization_name = "tim-krebs-org"
+    default_tags          = {}
+  }
+}
+
+# ─── Deployment: staging ────────────────────────────────────────────────────
+
+deployment "staging" {
+  inputs = {
+    # Authentication
+    aws_identity_token = identity_token.aws.jwt
+    aws_region         = "eu-central-1"
+    role_arn           = "arn:aws:iam::173003892479:role/tfc-netlix-staging"
+    hcp_project_id     = "ebae3a61-f614-4427-bed4-9d99817dea57"
+    hcp_client_id      = store.varset.netlix-hcp.hcp_client_id
+    hcp_client_secret  = store.varset.netlix-hcp.hcp_client_secret
+    vault_cluster_id   = "netlix-vault"
+    vault_address      = "https://netlix-vault-public-vault-7ebc141d.dffa8084.z1.hashicorp.cloud:8200"
+    vault_identity_token = identity_token.vault.jwt
+    hvn_id             = "hvn"
+
+    # Networking
+    vpc_cidr = "10.1.0.0/16"
+    azs      = ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
+
+    # DNS
+    base_domain     = "netlix.dev"
+    route53_zone_id = "Z051580832J77K2X4KU7U"
+
+    # EKS
+    cluster_name        = "netlix-staging"
+    cluster_version     = "1.31"
+    node_instance_types = ["m6i.xlarge"]
+    node_desired_size   = 3
+    node_min_size       = 3
+    node_max_size       = 6
+    cluster_endpoint_public_access_cidrs = [] # staging: private-only endpoint (production-like)
+
+    # RDS
+    db_instance_class = "db.t4g.large"
+    db_name           = "netlix"
+    db_engine_version = "16.6"
+
+    # Application
+    github_org = "timkrebs"
+    github_pat = store.varset.netlix-vault.github_pat
+
+    alert_email = ""
+
+    # Metadata
+    environment           = "staging"
     project               = "netlix"
     tfc_organization_name = "tim-krebs-org"
     default_tags          = {}

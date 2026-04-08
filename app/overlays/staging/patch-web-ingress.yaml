@@ -4,7 +4,10 @@ metadata:
   name: web
   namespace: consul
   annotations:
-    alb.ingress.kubernetes.io/certificate-arn: "REPLACE_WITH_ACM_CERT_ARN"
+    # Populate after first staging Stack apply:
+    # Command: terraform output -raw -state=terraform.tfstate certificate_arn
+    # (from the dns component workspace — this is the ACM wildcard cert ARN)
+    alb.ingress.kubernetes.io/certificate-arn: "STAGING_ACM_CERT_ARN_PENDING_FIRST_DEPLOYMENT"
     external-dns.alpha.kubernetes.io/hostname: app.staging.netlix.dev
 spec:
   rules:

@@ -6,7 +6,7 @@ metadata:
 spec:
   method: kubernetes
   mount: kubernetes
-  namespace: admin/dev
+  namespace: admin
   vaultConnectionRef: vault-secrets-operator-system/default
   kubernetes:
     role: netlix-vso
