@@ -18,7 +18,7 @@ store "varset" "netlix-hcp" {
 # Vault secrets varset (credentials for Vault operations, GitHub PAT, etc.)
 # TODO: Create this varset in HCP Terraform UI, then replace the ID below
 store "varset" "netlix-vault" {
-  id       = "varset-PLACEHOLDER_REPLACE_WITH_ACTUAL_ID"
+  id       = "varset-xzvdBmiHBBMA1Q7T"
   category = "terraform"
 }
 
