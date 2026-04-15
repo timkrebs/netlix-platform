@@ -253,4 +253,3 @@ removed {
     aws = provider.aws.main
   }
 }
-

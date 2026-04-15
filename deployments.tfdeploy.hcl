@@ -53,6 +53,8 @@ deployment "dev" {
 
     alert_email = ""
 
+    alert_email = ""
+
     # Metadata
     environment           = "dev"
     project               = "netlix"

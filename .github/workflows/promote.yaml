@@ -21,12 +21,6 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  actions: write
-
-jobs:
-  promote:
-    name: Promote ${{ inputs.from }} → ${{ inputs.to }}
-    runs-on: ubuntu-latest
     outputs:
       pr_number: ${{ steps.pr.outputs.number }}
       pr_url: ${{ steps.pr.outputs.url }}

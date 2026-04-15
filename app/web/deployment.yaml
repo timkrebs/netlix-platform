@@ -77,6 +77,8 @@ spec:
           value: "http://localhost:8080"
         - name: LISTEN_ADDR
           value: "0.0.0.0:9090"
+        - name: DD_SERVICE
+          value: "web"
         - name: ENVIRONMENT
           value: "dev"
         - name: VERSION

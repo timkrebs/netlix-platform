@@ -52,13 +52,15 @@ jobs:
           - dns
           - eks
           - rds
-          - hvn-peering
+          - cert-manager
+          - vault-server
           - vault-config
           - vso
           - alb-controller
           - external-dns
           - argocd
           - monitoring
+          - datadog-operator
     steps:
       - uses: actions/checkout@v4
 
