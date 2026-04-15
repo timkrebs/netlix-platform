@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: consul
+  labels:
+    # Enforce baseline: blocks privileged containers
+    pod-security.kubernetes.io/enforce: baseline
+    # Warn + audit on restricted: logs violations from Consul sidecars
+    # without blocking them — upgrade to enforce once validated
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

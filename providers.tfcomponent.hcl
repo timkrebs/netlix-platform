@@ -17,10 +17,6 @@ required_providers {
     source  = "hashicorp/kubernetes"
     version = "~> 2.0"
   }
-  hcp = {
-    source  = "hashicorp/hcp"
-    version = "~> 0.100"
-  }
   random = {
     source  = "hashicorp/random"
     version = "~> 3.0"
@@ -64,28 +60,13 @@ provider "aws" "main" {
   }
 }
 
-# ─── HCP Provider ─────────────────────────────────────────────────────────
+# ─── Vault Provider (token auth to self-hosted Vault Enterprise on EKS) ───
 
-provider "hcp" "main" {
+provider "vault" "main" {
   config {
-    project_id    = var.hcp_project_id
-    client_id     = var.hcp_client_id
-    client_secret = var.hcp_client_secret
-  }
-}
-
-# ─── Vault Provider ───────────────────────────────────────────────────────
-
-provider "vault" "hcp" {
-  config {
-    address   = var.vault_address
-    namespace = "admin"
-
-    auth_login_jwt {
-      mount = "jwt-tfc"
-      role  = "tfc-stacks"
-      jwt   = var.vault_identity_token
-    }
+    address          = component.vault_server.vault_external_address
+    token            = var.vault_root_token
+    skip_child_token = true
   }
 }
 

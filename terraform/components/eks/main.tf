@@ -1,6 +1,6 @@
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 20.0"
+  version = "20.33.0"
 
   cluster_name    = var.cluster_name
   cluster_version = var.cluster_version
@@ -34,11 +34,23 @@ module "eks" {
 
   enable_irsa = true
 
+  # Explicitly disable EKS Auto Mode — required by AWS provider >= 5.83.
+  # Module 20.33.0 always emits elastic_load_balancing and storage_config blocks;
+  # this setting makes compute_config also emit with enabled=false so all three
+  # are consistently false, satisfying provider validation.
+  cluster_compute_config = {
+    enabled = false
+  }
+
   cluster_addons = {
     coredns            = { most_recent = true }
     kube-proxy         = { most_recent = true }
     vpc-cni            = { most_recent = true, service_account_role_arn = module.vpc_cni_irsa.iam_role_arn }
     aws-ebs-csi-driver = { most_recent = true, service_account_role_arn = module.ebs_csi_irsa.iam_role_arn }
+    amazon-cloudwatch-observability = {
+      addon_version            = "v4.10.3-eksbuild.1"
+      service_account_role_arn = module.cloudwatch_observability_irsa.iam_role_arn
+    }
   }
 
   enable_cluster_creator_admin_permissions = true

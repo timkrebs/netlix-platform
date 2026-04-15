@@ -1,6 +1,6 @@
 locals {
   vault_addr = var.vault_address
-  env_ns     = "admin/${var.environment}"
+  env_ns     = var.environment
 }
 
 # Per-environment child namespace under admin

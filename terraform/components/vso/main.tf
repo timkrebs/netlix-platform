@@ -19,6 +19,10 @@ resource "helm_release" "vso" {
     value = "false"
   }
   set {
+    name  = "defaultVaultConnection.caCertSecretRef"
+    value = var.vault_ca_secret_name
+  }
+  set {
     name  = "defaultAuthMethod.enabled"
     value = "true"
   }

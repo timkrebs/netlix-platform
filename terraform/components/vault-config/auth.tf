@@ -4,53 +4,14 @@ resource "vault_auth_backend" "kubernetes" {
   path      = "kubernetes"
 }
 
-# ─── Token reviewer SA for HCP Vault K8s auth ────────────────────────────
-# HCP Vault is external to the cluster and needs a long-lived SA token
-# to call the TokenReview API and validate K8s service account tokens.
-
-resource "kubernetes_service_account" "vault_token_reviewer" {
-  metadata {
-    name      = "vault-token-reviewer"
-    namespace = "kube-system"
-  }
-}
-
-resource "kubernetes_cluster_role_binding" "vault_token_reviewer" {
-  metadata {
-    name = "vault-token-reviewer-binding"
-  }
-
-  role_ref {
-    api_group = "rbac.authorization.k8s.io"
-    kind      = "ClusterRole"
-    name      = "system:auth-delegator"
-  }
-
-  subject {
-    kind      = "ServiceAccount"
-    name      = kubernetes_service_account.vault_token_reviewer.metadata[0].name
-    namespace = "kube-system"
-  }
-}
-
-resource "kubernetes_secret" "vault_token_reviewer" {
-  metadata {
-    name      = "vault-token-reviewer-token"
-    namespace = "kube-system"
-    annotations = {
-      "kubernetes.io/service-account.name" = kubernetes_service_account.vault_token_reviewer.metadata[0].name
-    }
-  }
-
-  type = "kubernetes.io/service-account-token"
-}
+# ─── Kubernetes auth backend config ───────────────────────────────────────
+# Vault runs in-cluster, so it can access the K8s TokenReview API directly
+# via its own service account — no external token reviewer SA needed.
 
 resource "vault_kubernetes_auth_backend_config" "eks" {
   namespace              = vault_namespace.env.path_fq
   backend                = vault_auth_backend.kubernetes.path
-  kubernetes_host        = var.eks_cluster_endpoint
-  kubernetes_ca_cert     = base64decode(var.eks_cluster_ca)
-  token_reviewer_jwt     = kubernetes_secret.vault_token_reviewer.data["token"]
+  kubernetes_host        = "https://kubernetes.default.svc"
   disable_iss_validation = true
 }
 
@@ -101,15 +62,12 @@ resource "vault_policy" "tfc" {
   name  = "tfc-policy"
 
   policy = <<-EOT
-    # TFC needs full admin access to manage Vault configuration across
-    # namespaces, auth backends, PKI, database secrets, KV, and policies.
+    # TFC manages Vault configuration across child namespaces (dev,
+    # staging) including auth backends, secrets engines, PKI, policies,
+    # and database connections. Requires full access at the root namespace
+    # for cross-namespace operations — scoped paths do not propagate.
     path "*" {
       capabilities = ["create", "read", "update", "delete", "list", "sudo"]
-    }
-
-    # Allow creating child namespaces
-    path "sys/namespaces/*" {
-      capabilities = ["create", "read", "update", "delete", "list"]
     }
   EOT
 }

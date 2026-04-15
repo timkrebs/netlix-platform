@@ -51,9 +51,63 @@ resource "aws_iam_role" "tfc_dev" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "tfc_dev" {
-  role       = aws_iam_role.tfc_dev.name
-  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+resource "aws_iam_role_policy" "tfc_dev" {
+  name = "tfc-netlix-dev-scoped"
+  role = aws_iam_role.tfc_dev.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "Networking"
+        Effect   = "Allow"
+        Action   = ["ec2:*", "elasticloadbalancing:*"]
+        Resource = "*"
+      },
+      {
+        Sid      = "EKS"
+        Effect   = "Allow"
+        Action   = ["eks:*"]
+        Resource = "*"
+      },
+      {
+        Sid      = "RDS"
+        Effect   = "Allow"
+        Action   = ["rds:*"]
+        Resource = "*"
+      },
+      {
+        Sid      = "DNS"
+        Effect   = "Allow"
+        Action   = ["route53:*", "acm:*"]
+        Resource = "*"
+      },
+      {
+        Sid      = "IAM"
+        Effect   = "Allow"
+        Action   = ["iam:*"]
+        Resource = "*"
+      },
+      {
+        Sid      = "KMS"
+        Effect   = "Allow"
+        Action   = ["kms:*"]
+        Resource = "*"
+      },
+      {
+        Sid      = "Observability"
+        Effect   = "Allow"
+        Action   = ["logs:*", "cloudwatch:*", "sns:*"]
+        Resource = "*"
+      },
+      {
+        Sid      = "STS"
+        Effect   = "Allow"
+        Action   = ["sts:GetCallerIdentity", "sts:AssumeRole"]
+        Resource = "*"
+      },
+    ]
+  })
 }
 
 resource "aws_iam_role" "tfc_staging" {
@@ -73,9 +127,63 @@ resource "aws_iam_role" "tfc_staging" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "tfc_staging" {
-  role       = aws_iam_role.tfc_staging.name
-  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+resource "aws_iam_role_policy" "tfc_staging" {
+  name = "tfc-netlix-staging-scoped"
+  role = aws_iam_role.tfc_staging.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "Networking"
+        Effect   = "Allow"
+        Action   = ["ec2:*", "elasticloadbalancing:*"]
+        Resource = "*"
+      },
+      {
+        Sid      = "EKS"
+        Effect   = "Allow"
+        Action   = ["eks:*"]
+        Resource = "*"
+      },
+      {
+        Sid      = "RDS"
+        Effect   = "Allow"
+        Action   = ["rds:*"]
+        Resource = "*"
+      },
+      {
+        Sid      = "DNS"
+        Effect   = "Allow"
+        Action   = ["route53:*", "acm:*"]
+        Resource = "*"
+      },
+      {
+        Sid      = "IAM"
+        Effect   = "Allow"
+        Action   = ["iam:*"]
+        Resource = "*"
+      },
+      {
+        Sid      = "KMS"
+        Effect   = "Allow"
+        Action   = ["kms:*"]
+        Resource = "*"
+      },
+      {
+        Sid      = "Observability"
+        Effect   = "Allow"
+        Action   = ["logs:*", "cloudwatch:*", "sns:*"]
+        Resource = "*"
+      },
+      {
+        Sid      = "STS"
+        Effect   = "Allow"
+        Action   = ["sts:GetCallerIdentity", "sts:AssumeRole"]
+        Resource = "*"
+      },
+    ]
+  })
 }
 
 # ─── Outputs ─────────────────────────────────────────────────────────────

@@ -52,7 +52,8 @@ jobs:
           - dns
           - eks
           - rds
-          - hvn-peering
+          - cert-manager
+          - vault-server
           - vault-config
           - vso
           - alb-controller

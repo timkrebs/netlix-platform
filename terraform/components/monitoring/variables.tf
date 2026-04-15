@@ -28,3 +28,9 @@ variable "alert_email" {
   type        = string
   default     = ""
 }
+
+variable "log_retention_days" {
+  description = "Retention period for CloudWatch log groups"
+  type        = number
+  default     = 30
+}

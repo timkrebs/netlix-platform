@@ -33,7 +33,6 @@ spec:
     metadata:
       labels:
         app: web
-        tags.datadoghq.com/service: "web"
       annotations:
         # ── Consul service mesh ──────────────────────────────────────────────
         consul.hashicorp.com/connect-inject: "true"
@@ -92,11 +91,11 @@ spec:
         - containerPort: 9090
         resources:
           requests:
-            cpu: 50m
-            memory: 32Mi
-          limits:
             cpu: 100m
             memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 128Mi
         readinessProbe:
           httpGet:
             path: /health

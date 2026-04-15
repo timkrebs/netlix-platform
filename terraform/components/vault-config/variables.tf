@@ -1,30 +1,5 @@
-variable "vault_cluster_id" {
-  description = "HCP Vault cluster ID"
-  type        = string
-}
-
 variable "vault_address" {
-  description = "HCP Vault public address"
-  type        = string
-}
-
-variable "eks_cluster_endpoint" {
-  description = "EKS cluster API endpoint"
-  type        = string
-}
-
-variable "eks_cluster_ca" {
-  description = "EKS cluster CA certificate (base64)"
-  type        = string
-}
-
-variable "eks_oidc_provider_arn" {
-  description = "EKS OIDC provider ARN"
-  type        = string
-}
-
-variable "eks_oidc_provider_url" {
-  description = "EKS OIDC provider URL"
+  description = "Vault external address (NLB endpoint)"
   type        = string
 }
 

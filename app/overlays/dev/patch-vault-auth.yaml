@@ -4,4 +4,4 @@ metadata:
   name: default
   namespace: consul
 spec:
-  namespace: admin/dev
+  namespace: dev
