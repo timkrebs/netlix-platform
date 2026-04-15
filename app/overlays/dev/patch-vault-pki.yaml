@@ -4,5 +4,5 @@ metadata:
   name: web-tls
   namespace: consul
 spec:
-  namespace: admin/dev
+  namespace: dev
   commonName: app.dev.netlix.dev

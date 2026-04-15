@@ -13,38 +13,19 @@ variable "role_arn" {
   type = string
 }
 
-variable "hcp_project_id" {
-  type = string
+# ─── Vault Enterprise ─────────────────────────────────────────────────────
+
+variable "vault_ent_license" {
+  type        = string
+  description = "Vault Enterprise license string"
+  sensitive   = true
 }
 
-variable "hcp_client_id" {
-  type      = string
-  sensitive = true
-  ephemeral = true
-}
-
-variable "hcp_client_secret" {
-  type      = string
-  sensitive = true
-  ephemeral = true
-}
-
-variable "vault_cluster_id" {
-  type = string
-}
-
-variable "vault_address" {
-  type = string
-}
-
-variable "vault_identity_token" {
-  type      = string
-  sensitive = true
-  ephemeral = true
-}
-
-variable "hvn_id" {
-  type = string
+variable "vault_root_token" {
+  type        = string
+  description = "Vault root token for provider authentication (store in TFC variable set)"
+  sensitive   = true
+  ephemeral   = true
 }
 
 # ─── Networking ────────────────────────────────────────────────────────────

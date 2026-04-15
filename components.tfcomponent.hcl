@@ -59,25 +59,38 @@ component "eks" {
   }
 }
 
-# ─── HVN Peering (HCP Vault ↔ AWS VPC) ────────────────────────────────────
+# ─── cert-manager (TLS certificates for Vault server) ─────────────────────
 
-component "hvn_peering" {
-  source = "./terraform/components/hvn-peering"
+component "cert_manager" {
+  source = "./terraform/components/cert-manager"
+
+  inputs = {}
+
+  providers = {
+    helm = provider.helm.eks
+  }
+}
+
+# ─── Vault Enterprise Server (5-node HA Raft on EKS) ──────────────────────
+
+component "vault_server" {
+  source = "./terraform/components/vault-server"
 
   inputs = {
-    hvn_id                  = var.hvn_id
-    peer_vpc_id             = component.networking.vpc_id
-    peer_account_id         = component.networking.vpc_owner_id
-    peer_vpc_region         = var.aws_region
-    vpc_cidr                = var.vpc_cidr
-    private_route_table_ids = component.networking.private_route_table_ids
-    environment             = var.environment
-    project                 = var.project
+    cluster_name           = var.cluster_name
+    environment            = var.environment
+    project                = var.project
+    vault_ent_license      = var.vault_ent_license
+    oidc_provider_arn      = component.eks.oidc_provider_arn
+    oidc_provider_url      = component.eks.oidc_provider_url
+    aws_region             = var.aws_region
+    cert_manager_namespace = component.cert_manager.namespace
   }
 
   providers = {
-    hcp = provider.hcp.main
-    aws = provider.aws.main
+    aws        = provider.aws.main
+    helm       = provider.helm.eks
+    kubernetes = provider.kubernetes.eks
   }
 }
 
@@ -93,7 +106,6 @@ component "rds" {
     db_name            = var.db_name
     db_engine_version  = var.db_engine_version
     eks_security_group = component.eks.cluster_security_group_id
-    hvn_cidr_block     = component.hvn_peering.hvn_cidr_block
     environment        = var.environment
     project            = var.project
   }
@@ -110,12 +122,7 @@ component "vault_config" {
   source = "./terraform/components/vault-config"
 
   inputs = {
-    vault_cluster_id        = var.vault_cluster_id
-    vault_address           = var.vault_address
-    eks_cluster_endpoint    = component.eks.cluster_endpoint
-    eks_cluster_ca          = component.eks.cluster_ca_certificate
-    eks_oidc_provider_arn   = component.eks.oidc_provider_arn
-    eks_oidc_provider_url   = component.eks.oidc_provider_url
+    vault_address           = component.vault_server.vault_external_address
     rds_endpoint            = component.rds.endpoint
     rds_port                = component.rds.port
     rds_admin_username      = component.rds.admin_username
@@ -130,8 +137,7 @@ component "vault_config" {
   }
 
   providers = {
-    vault      = provider.vault.hcp
-    kubernetes = provider.kubernetes.eks
+    vault = provider.vault.main
   }
 }
 
@@ -141,9 +147,10 @@ component "vso" {
   source = "./terraform/components/vso"
 
   inputs = {
-    vault_address        = component.vault_config.vault_public_endpoint
+    vault_address        = component.vault_server.vault_internal_address
     vault_namespace      = component.vault_config.vault_namespace
     kubernetes_auth_path = component.vault_config.kubernetes_auth_path
+    vault_ca_secret_name = component.vault_server.vault_ca_cert
   }
 
   providers = {
@@ -233,6 +240,17 @@ removed {
   providers = {
     helm       = provider.helm.eks
     kubernetes = provider.kubernetes.eks
+  }
+}
+
+# ─── Removed: HVN Peering (replaced by self-hosted Vault on EKS) ──────────
+
+removed {
+  from   = component.hvn_peering
+  source = "./terraform/components/hvn-peering"
+
+  providers = {
+    aws = provider.aws.main
   }
 }
 

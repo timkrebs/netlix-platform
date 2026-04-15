@@ -47,12 +47,10 @@ output "vault_namespace" {
 
 output "vault_public_endpoint" {
   type  = string
-  value = component.vault_config.vault_public_endpoint
+  value = component.vault_server.vault_external_address
 }
 
-# ─── HVN Peering ──────────────────────────────────────────────────────────
-
-output "hvn_peering_id" {
+output "vault_internal_address" {
   type  = string
-  value = component.hvn_peering.peering_id
+  value = component.vault_server.vault_internal_address
 }
