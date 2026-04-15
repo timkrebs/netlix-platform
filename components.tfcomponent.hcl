@@ -85,6 +85,8 @@ component "vault_server" {
     oidc_provider_url      = component.eks.oidc_provider_url
     aws_region             = var.aws_region
     cert_manager_namespace = component.cert_manager.namespace
+    domain                 = var.base_domain
+    certificate_arn        = component.dns.certificate_arn
   }
 
   providers = {
@@ -251,5 +253,6 @@ removed {
 
   providers = {
     aws = provider.aws.main
+    hcp = provider.hcp.default
   }
 }

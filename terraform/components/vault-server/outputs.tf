@@ -4,8 +4,8 @@ output "vault_internal_address" {
 }
 
 output "vault_external_address" {
-  description = "Vault external address (NLB DNS — for TFC provider and external access)"
-  value       = "https://${data.kubernetes_service.vault_lb.status[0].load_balancer[0].ingress[0].hostname}:8200"
+  description = "Vault external address (public domain — for TFC provider and external access)"
+  value       = "https://vault.${var.environment}.${var.domain}:8200"
 }
 
 output "vault_namespace" {

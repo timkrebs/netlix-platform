@@ -273,6 +273,10 @@ resource "helm_release" "vault" {
     name  = "server.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-cross-zone-load-balancing-enabled"
     value = "true"
   }
+  set {
+    name  = "server.service.annotations.external-dns\\.alpha\\.kubernetes\\.io/hostname"
+    value = "vault.${var.environment}.${var.domain}"
+  }
 
   # ── UI ──────────────────────────────────────────────────────────────────
   set {
@@ -289,15 +293,4 @@ resource "helm_release" "vault" {
     name  = "injector.enabled"
     value = "false"
   }
-}
-
-# ─── Look up the NLB address after Helm deploys ───────────────────────────
-
-data "kubernetes_service" "vault_lb" {
-  metadata {
-    name      = "vault"
-    namespace = local.vault_namespace
-  }
-
-  depends_on = [helm_release.vault]
 }

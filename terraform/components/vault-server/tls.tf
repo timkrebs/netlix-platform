@@ -99,6 +99,7 @@ resource "kubernetes_manifest" "vault_server_cert" {
         "vault-internal.vault.svc.cluster.local",
         "*.vault-internal",
         "*.vault-internal.vault.svc.cluster.local",
+        "vault.${var.environment}.${var.domain}",
         "localhost",
       ]
       ipAddresses = ["127.0.0.1"]

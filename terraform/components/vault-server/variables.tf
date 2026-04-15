@@ -39,6 +39,16 @@ variable "cert_manager_namespace" {
   type        = string
 }
 
+variable "domain" {
+  description = "Base domain for public DNS (e.g., netlix.dev)"
+  type        = string
+}
+
+variable "certificate_arn" {
+  description = "ACM wildcard certificate ARN for the ALB"
+  type        = string
+}
+
 variable "vault_helm_version" {
   description = "Vault Helm chart version"
   type        = string

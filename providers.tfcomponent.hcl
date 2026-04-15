@@ -37,6 +37,10 @@ required_providers {
     source  = "hashicorp/cloudinit"
     version = "~> 2.0"
   }
+  hcp = {
+    source  = "hashicorp/hcp"
+    version = "~> 0.100"
+  }
 }
 
 # ─── AWS Provider (OIDC workload identity — no static credentials) ─────────
@@ -88,6 +92,12 @@ provider "helm" "eks" {
       token                  = component.eks.cluster_token
     }
   }
+}
+
+# ─── HCP Provider (required only for the hvn_peering removed block) ─────────
+
+provider "hcp" "default" {
+  config {}
 }
 
 # ─── Utility Providers ────────────────────────────────────────────────────
