@@ -8,7 +8,7 @@ identity_token "aws" {
 
 # Vault secrets varset (Enterprise license, root token, GitHub PAT, etc.)
 store "varset" "netlix-vault" {
-  id       = "varset-xzvdBmiHBBMA1Q7T"
+  id       = "varset-KzPCKUxZHwNvVQ4Z"
   category = "terraform"
 }
 
