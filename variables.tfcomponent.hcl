@@ -17,7 +17,7 @@ variable "role_arn" {
 
 variable "vault_ent_license" {
   type        = string
-  description = "Vault Enterprise license string"
+  description = "Vault Enterprise license string (mark NON-sensitive in TFC varset to avoid ephemeral constraint)"
   sensitive   = true
 }
 
@@ -105,6 +105,7 @@ variable "github_org" {
 variable "github_pat" {
   type      = string
   sensitive = true
+  ephemeral = true
 }
 
 
