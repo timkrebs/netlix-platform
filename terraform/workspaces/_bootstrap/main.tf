@@ -63,6 +63,29 @@ resource "tfe_workspace" "this" {
   }
 }
 
+# ─── Remote state sharing ────────────────────────────────────────────────
+# network shares outputs with vault-cluster and app-cluster.
+# vault-cluster shares outputs with app-cluster.
+
+resource "tfe_workspace_settings" "network" {
+  for_each = var.environments
+
+  workspace_id = tfe_workspace.this["netlix-network-${each.key}"].id
+  remote_state_consumer_ids = [
+    tfe_workspace.this["netlix-vault-cluster-${each.key}"].id,
+    tfe_workspace.this["netlix-app-cluster-${each.key}"].id,
+  ]
+}
+
+resource "tfe_workspace_settings" "vault_cluster" {
+  for_each = var.environments
+
+  workspace_id = tfe_workspace.this["netlix-vault-cluster-${each.key}"].id
+  remote_state_consumer_ids = [
+    tfe_workspace.this["netlix-app-cluster-${each.key}"].id,
+  ]
+}
+
 # ─── Dynamic provider credentials (AWS OIDC) ─────────────────────────────
 
 resource "tfe_variable" "aws_provider_auth" {

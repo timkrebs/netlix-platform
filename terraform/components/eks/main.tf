@@ -18,7 +18,7 @@ module "eks" {
 
   eks_managed_node_groups = {
     general = {
-      name           = "${var.cluster_name}-general"
+      name           = "${var.cluster_name}-ng"
       instance_types = var.node_instance_types
       desired_size   = var.node_desired_size
       min_size       = var.node_min_size
