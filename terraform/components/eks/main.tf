@@ -45,7 +45,7 @@ module "eks" {
     }
   }
 
-  enable_cluster_creator_admin_permissions = true
+  enable_cluster_creator_admin_permissions = false
 
   access_entries = {
     for arn in var.additional_admin_arns : arn => {
