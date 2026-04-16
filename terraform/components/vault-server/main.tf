@@ -276,7 +276,6 @@ resource "helm_release" "vault" {
   set {
     name  = "server.ingress.enabled"
     value = "true"
-    type  = "string"
   }
   set {
     name  = "server.ingress.ingressClassName"
