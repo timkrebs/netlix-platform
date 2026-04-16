@@ -256,27 +256,10 @@ resource "helm_release" "vault" {
     })
   }
 
-  # ── Service: NLB for external access (TFC provider) ────────────────────
+  # ── Service: ClusterIP (internal only — ALB Ingress handles external) ──
   set {
     name  = "server.service.type"
-    value = "LoadBalancer"
-  }
-  set {
-    name  = "server.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-type"
-    value = "nlb"
-  }
-  set {
-    name  = "server.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-scheme"
-    value = "internet-facing"
-  }
-  set {
-    name  = "server.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-cross-zone-load-balancing-enabled"
-    value = "true"
-    type  = "string"
-  }
-  set {
-    name  = "server.service.annotations.external-dns\\.alpha\\.kubernetes\\.io/hostname"
-    value = "vault.${var.environment}.${var.domain}"
+    value = "ClusterIP"
   }
 
   # ── UI ──────────────────────────────────────────────────────────────────
@@ -287,6 +270,63 @@ resource "helm_release" "vault" {
   set {
     name  = "ui.activeVaultPodOnly"
     value = "true"
+  }
+
+  # ── Ingress: ALB with ACM certificate (publicly trusted TLS) ──────────
+  set {
+    name  = "server.ingress.enabled"
+    value = "true"
+    type  = "string"
+  }
+  set {
+    name  = "server.ingress.ingressClassName"
+    value = "alb"
+  }
+  set {
+    name  = "server.ingress.hosts[0].host"
+    value = "vault.${var.environment}.${var.domain}"
+  }
+  set {
+    name  = "server.ingress.hosts[0].paths[0]"
+    value = "/"
+  }
+  set {
+    name  = "server.ingress.annotations.alb\\.ingress\\.kubernetes\\.io/scheme"
+    value = "internet-facing"
+  }
+  set {
+    name  = "server.ingress.annotations.alb\\.ingress\\.kubernetes\\.io/target-type"
+    value = "ip"
+  }
+  set {
+    name  = "server.ingress.annotations.alb\\.ingress\\.kubernetes\\.io/certificate-arn"
+    value = var.certificate_arn
+  }
+  set {
+    name  = "server.ingress.annotations.alb\\.ingress\\.kubernetes\\.io/listen-ports"
+    value = "[{\"HTTPS\":443}]"
+    type  = "string"
+  }
+  set {
+    name  = "server.ingress.annotations.alb\\.ingress\\.kubernetes\\.io/ssl-redirect"
+    value = "443"
+    type  = "string"
+  }
+  set {
+    name  = "server.ingress.annotations.alb\\.ingress\\.kubernetes\\.io/backend-protocol"
+    value = "HTTPS"
+  }
+  set {
+    name  = "server.ingress.annotations.alb\\.ingress\\.kubernetes\\.io/healthcheck-path"
+    value = "/v1/sys/health?standbyok=true"
+  }
+  set {
+    name  = "server.ingress.annotations.alb\\.ingress\\.kubernetes\\.io/healthcheck-protocol"
+    value = "HTTPS"
+  }
+  set {
+    name  = "server.ingress.annotations.external-dns\\.alpha\\.kubernetes\\.io/hostname"
+    value = "vault.${var.environment}.${var.domain}"
   }
 
   # ── Disable injector (using VSO instead) ────────────────────────────────

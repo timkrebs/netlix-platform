@@ -24,6 +24,17 @@ module "eks" {
   additional_admin_arns                = [data.aws_iam_session_context.current.issuer_arn]
 }
 
+# ─── AWS Load Balancer Controller (ALB for Vault Ingress) ─────────────────
+
+module "alb_controller" {
+  source = "../../components/alb-controller"
+
+  cluster_name           = module.eks.cluster_name
+  lb_controller_role_arn = module.eks.lb_controller_role_arn
+  vpc_id                 = local.vpc_id
+  aws_region             = var.aws_region
+}
+
 # ─── ExternalDNS (creates vault.dev.netlix.dev Route53 record) ────────────
 
 module "external_dns" {

@@ -4,8 +4,8 @@ output "vault_internal_address" {
 }
 
 output "vault_external_address" {
-  description = "Vault external address (public domain — for TFC provider and external access)"
-  value       = "https://vault.${var.environment}.${var.domain}:8200"
+  description = "Vault external address (public domain — ALB with ACM cert)"
+  value       = "https://vault.${var.environment}.${var.domain}"
 }
 
 output "vault_namespace" {
