@@ -24,6 +24,17 @@ module "eks" {
   additional_admin_arns                = [data.aws_iam_session_context.current.issuer_arn]
 }
 
+# ─── ExternalDNS (creates vault.dev.netlix.dev Route53 record) ────────────
+
+module "external_dns" {
+  source = "../../components/external-dns"
+
+  cluster_name          = module.eks.cluster_name
+  domain                = var.base_domain
+  zone_id               = local.zone_id
+  external_dns_role_arn = module.eks.external_dns_role_arn
+}
+
 # ─── cert-manager (TLS certificates for Vault server) ────────────────────
 
 module "cert_manager" {
