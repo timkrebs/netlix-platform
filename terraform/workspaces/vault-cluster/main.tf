@@ -1,3 +1,10 @@
+# ─── Current caller identity (for EKS admin access) ──────────────────────
+
+data "aws_caller_identity" "current" {}
+data "aws_iam_session_context" "current" {
+  arn = data.aws_caller_identity.current.arn
+}
+
 # ─── EKS Cluster (small nodes for Vault workloads) ────────────────────────
 
 module "eks" {
@@ -14,6 +21,7 @@ module "eks" {
   environment                          = var.environment
   project                              = var.project
   cluster_endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
+  additional_admin_arns                = [data.aws_iam_session_context.current.issuer_arn]
 }
 
 # ─── cert-manager (TLS certificates for Vault server) ────────────────────

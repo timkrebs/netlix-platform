@@ -44,6 +44,12 @@ variable "cluster_endpoint_public_access_cidrs" {
   default     = []
 }
 
+variable "additional_admin_arns" {
+  description = "Additional IAM role/user ARNs to grant EKS cluster admin access"
+  type        = list(string)
+  default     = []
+}
+
 variable "environment" {
   description = "Environment name"
   type        = string
