@@ -464,79 +464,6 @@ resource "aws_cloudwatch_dashboard" "main" {
         }
       },
 
-      # ── Row 4: RDS Database ─────────────────────────────────────────
-      {
-        type   = "text"
-        x      = 0
-        y      = 20
-        width  = 24
-        height = 1
-        properties = {
-          markdown = "## RDS Database — ${var.rds_instance_id}"
-        }
-      },
-      {
-        type   = "metric"
-        x      = 0
-        y      = 21
-        width  = 8
-        height = 6
-        properties = {
-          title   = "RDS CPU Utilization"
-          view    = "timeSeries"
-          stacked = false
-          region  = data.aws_region.current.name
-          metrics = [
-            ["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", var.rds_instance_id, { stat = "Average" }]
-          ]
-          period = 300
-          yAxis  = { left = { min = 0, max = 100, label = "%" } }
-          annotations = {
-            horizontal = [{ value = 80, label = "Alarm threshold", color = "#d62728" }]
-          }
-        }
-      },
-      {
-        type   = "metric"
-        x      = 8
-        y      = 21
-        width  = 8
-        height = 6
-        properties = {
-          title   = "RDS Free Storage (GB)"
-          view    = "timeSeries"
-          stacked = false
-          region  = data.aws_region.current.name
-          metrics = [
-            ["AWS/RDS", "FreeStorageSpace", "DBInstanceIdentifier", var.rds_instance_id, { stat = "Average" }]
-          ]
-          period = 300
-          annotations = {
-            horizontal = [{ value = 5368709120, label = "Alarm threshold (5GB)", color = "#d62728" }]
-          }
-        }
-      },
-      {
-        type   = "metric"
-        x      = 16
-        y      = 21
-        width  = 8
-        height = 6
-        properties = {
-          title   = "RDS Connections"
-          view    = "timeSeries"
-          stacked = false
-          region  = data.aws_region.current.name
-          metrics = [
-            ["AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", var.rds_instance_id, { stat = "Average" }]
-          ]
-          period = 300
-          annotations = {
-            horizontal = [{ value = 80, label = "Alarm threshold", color = "#d62728" }]
-          }
-        }
-      },
-
       # ── Row 5: VPC & Network ────────────────────────────────────────
       {
         type   = "text"
@@ -568,25 +495,6 @@ resource "aws_cloudwatch_dashboard" "main" {
           }
         }
       },
-      {
-        type   = "metric"
-        x      = 12
-        y      = 28
-        width  = 12
-        height = 6
-        properties = {
-          title   = "RDS Read/Write Latency (ms)"
-          view    = "timeSeries"
-          stacked = false
-          region  = data.aws_region.current.name
-          metrics = [
-            ["AWS/RDS", "ReadLatency", "DBInstanceIdentifier", var.rds_instance_id, { stat = "Average", label = "Read" }],
-            ["AWS/RDS", "WriteLatency", "DBInstanceIdentifier", var.rds_instance_id, { stat = "Average", label = "Write" }]
-          ]
-          period = 300
-        }
-      },
-
       # ── Row 6: Alarm Status ─────────────────────────────────────────
       {
         type   = "text"
