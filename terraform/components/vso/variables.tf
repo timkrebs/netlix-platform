@@ -14,9 +14,9 @@ variable "kubernetes_auth_path" {
 }
 
 variable "vault_ca_secret_name" {
-  description = "Name of the Kubernetes secret containing the Vault CA certificate (in vault namespace)"
+  description = "Name of the Kubernetes secret containing the Vault CA certificate. Empty string uses the system trust store."
   type        = string
-  default     = "vault-ca"
+  default     = ""
 }
 
 variable "vault_skip_tls_verify" {

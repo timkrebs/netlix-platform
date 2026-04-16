@@ -35,9 +35,9 @@ variable "node_max_size" {
 }
 
 variable "cluster_endpoint_public_access_cidrs" {
-  description = "CIDRs allowed to reach the EKS public endpoint (empty = disabled)"
+  description = "CIDRs allowed to reach the EKS public endpoint (empty = private-only)"
   type        = list(string)
-  default     = ["0.0.0.0/0"]
+  default     = []
 }
 
 variable "vault_ent_license" {

@@ -34,6 +34,10 @@ module "eks" {
 
   enable_irsa = true
 
+  # Control plane logging — captures API, audit, authenticator, controller
+  # manager, and scheduler logs to CloudWatch for security and debugging.
+  cluster_enabled_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+
   cluster_addons = {
     coredns            = { most_recent = true }
     kube-proxy         = { most_recent = true }

@@ -86,12 +86,8 @@ resource "aws_security_group" "rds" {
     }
   }
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  # No egress rules — RDS does not need outbound internet access.
+  # Enhanced Monitoring uses a VPC endpoint or the monitoring service role.
 
   tags = { component = "rds" }
 }

@@ -521,13 +521,13 @@ resource "aws_cloudwatch_dashboard" "main" {
               aws_cloudwatch_metric_alarm.rds_connections[0].arn,
             ] : [],
             [
-            aws_cloudwatch_metric_alarm.eks_node_not_ready.arn,
-            aws_cloudwatch_metric_alarm.rejected_connections.arn,
-            aws_cloudwatch_metric_alarm.pod_cpu_high.arn,
-            aws_cloudwatch_metric_alarm.pod_memory_high.arn,
-            aws_cloudwatch_metric_alarm.pod_restart_high.arn,
-            aws_cloudwatch_metric_alarm.node_cpu_high.arn,
-            aws_cloudwatch_metric_alarm.node_memory_high.arn,
+              aws_cloudwatch_metric_alarm.eks_node_not_ready.arn,
+              aws_cloudwatch_metric_alarm.rejected_connections.arn,
+              aws_cloudwatch_metric_alarm.pod_cpu_high.arn,
+              aws_cloudwatch_metric_alarm.pod_memory_high.arn,
+              aws_cloudwatch_metric_alarm.pod_restart_high.arn,
+              aws_cloudwatch_metric_alarm.node_cpu_high.arn,
+              aws_cloudwatch_metric_alarm.node_memory_high.arn,
           ])
         }
       }

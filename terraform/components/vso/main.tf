@@ -20,12 +20,13 @@ resource "helm_release" "vso" {
   }
 
   dynamic "set" {
-    for_each = var.vault_skip_tls_verify ? [] : [1]
+    for_each = var.vault_ca_secret_name != "" && !var.vault_skip_tls_verify ? [1] : []
     content {
       name  = "defaultVaultConnection.caCertSecretRef"
       value = var.vault_ca_secret_name
     }
   }
+
   set {
     name  = "defaultAuthMethod.enabled"
     value = "true"

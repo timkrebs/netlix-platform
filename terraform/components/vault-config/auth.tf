@@ -39,8 +39,61 @@ resource "vault_policy" "admin" {
   count  = var.create_shared_resources ? 1 : 0
   name   = "admin-policy"
   policy = <<-EOT
-    path "*" {
+    # Auth backend management
+    path "auth/*" {
       capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+    }
+    path "sys/auth/*" {
+      capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+    }
+
+    # Secrets engine management
+    path "sys/mounts/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+    path "sys/mounts" {
+      capabilities = ["read", "list"]
+    }
+
+    # Policy management
+    path "sys/policies/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+
+    # Namespace management
+    path "sys/namespaces/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+
+    # PKI and secrets engines
+    path "pki/*" {
+      capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+    }
+    path "pki_int/*" {
+      capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+    }
+
+    # KV secrets
+    path "kv/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+
+    # Database secrets engine
+    path "database/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+
+    # Token management
+    path "auth/token/*" {
+      capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+    }
+
+    # Health and status
+    path "sys/health" {
+      capabilities = ["read"]
+    }
+    path "sys/seal-status" {
+      capabilities = ["read"]
     }
   EOT
 }
@@ -62,12 +115,59 @@ resource "vault_policy" "tfc" {
   name  = "tfc-policy"
 
   policy = <<-EOT
-    # TFC manages Vault configuration across child namespaces (dev,
-    # staging) including auth backends, secrets engines, PKI, policies,
-    # and database connections. Requires full access at the root namespace
-    # for cross-namespace operations — scoped paths do not propagate.
-    path "*" {
+    # TFC manages Vault configuration across child namespaces: auth backends,
+    # secrets engines, PKI, policies, and database connections.
+
+    # Namespace management (create/manage child namespaces)
+    path "sys/namespaces/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+
+    # Auth backend management
+    path "auth/*" {
       capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+    }
+    path "sys/auth/*" {
+      capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+    }
+
+    # Secrets engine mounts
+    path "sys/mounts/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+    path "sys/mounts" {
+      capabilities = ["read", "list"]
+    }
+
+    # Policy management
+    path "sys/policies/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+
+    # PKI engines (root + intermediate signing)
+    path "pki/*" {
+      capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+    }
+    path "pki_int/*" {
+      capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+    }
+
+    # KV secrets
+    path "kv/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+
+    # Database secrets engine
+    path "database/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+
+    # Token self-management
+    path "auth/token/lookup-self" {
+      capabilities = ["read"]
+    }
+    path "auth/token/renew-self" {
+      capabilities = ["update"]
     }
   EOT
 }

@@ -78,11 +78,10 @@ module "vault_config" {
 module "vso" {
   source = "../../components/vso"
 
-  vault_address         = local.vault_external_address
-  vault_namespace       = module.vault_config.vault_namespace
-  kubernetes_auth_path  = module.vault_config.kubernetes_auth_path
-  vault_ca_secret_name  = local.vault_ca_cert
-  vault_skip_tls_verify = true # Cross-cluster: Vault CA cert not available locally
+  vault_address        = local.vault_external_address
+  vault_namespace      = module.vault_config.vault_namespace
+  kubernetes_auth_path = module.vault_config.kubernetes_auth_path
+  # ALB terminates TLS with publicly trusted ACM cert — no CA cert or skip needed
 }
 
 # ─── CloudWatch Monitoring (VPC Flow Logs + RDS + EKS Alarms) ────────────

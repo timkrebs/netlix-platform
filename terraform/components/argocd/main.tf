@@ -12,6 +12,9 @@ resource "helm_release" "argocd" {
     name  = "server.service.type"
     value = "ClusterIP"
   }
+  # Required for ALB ingress with backend-protocol HTTP. TLS terminates at
+  # ALB (ACM cert); disabling server TLS avoids double-encryption and lets
+  # ALB health checks work. In-cluster traffic is protected by VPC + network policies.
   set {
     name  = "configs.params.server\\.insecure"
     value = "true"
