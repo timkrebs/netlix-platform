@@ -30,6 +30,14 @@ module "cert_manager" {
   source = "../../components/cert-manager"
 }
 
+# Wait for cert-manager CRDs to be registered in the Kubernetes API.
+# The Helm release completes when pods are ready, but CRD API registration
+# is asynchronous and takes a few seconds longer.
+resource "time_sleep" "wait_for_cert_manager_crds" {
+  depends_on      = [module.cert_manager]
+  create_duration = "30s"
+}
+
 # ─── Vault Enterprise Server (5-node HA Raft on EKS) ─────────────────────
 
 module "vault_server" {
@@ -45,4 +53,6 @@ module "vault_server" {
   cert_manager_namespace = module.cert_manager.namespace
   domain                 = var.base_domain
   certificate_arn        = local.certificate_arn
+
+  depends_on = [time_sleep.wait_for_cert_manager_crds]
 }
