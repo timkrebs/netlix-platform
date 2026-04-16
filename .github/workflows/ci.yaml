@@ -3,10 +3,10 @@ name: CI
 on:
   pull_request:
     branches: [dev, staging, main]
-    paths: ['terraform/**', '*.tfcomponent.hcl', '*.tfdeploy.hcl', '.terraform.lock.hcl', '.github/workflows/**', 'sentinel/**', 'app/**']
+    paths: ['terraform/**', 'bootstrap/**', '.github/workflows/**', 'sentinel/**', 'app/**']
   push:
     branches: [dev, staging, main]
-    paths: ['terraform/**', '*.tfcomponent.hcl', '*.tfdeploy.hcl', '.terraform.lock.hcl', '.github/workflows/**', 'sentinel/**', 'app/**']
+    paths: ['terraform/**', 'bootstrap/**', '.github/workflows/**', 'sentinel/**', 'app/**']
 
 jobs:
   terraform-fmt:
@@ -21,6 +21,9 @@ jobs:
 
       - name: Format check (components)
         run: terraform fmt -check -recursive terraform/components/
+
+      - name: Format check (workspaces)
+        run: terraform fmt -check -recursive terraform/workspaces/
 
       - name: Format check (bootstrap)
         run: terraform fmt -check -recursive bootstrap/
@@ -74,6 +77,30 @@ jobs:
 
       - name: Validate
         working-directory: terraform/components/${{ matrix.component }}
+        run: terraform validate
+
+  validate-workspaces:
+    name: Validate workspace ${{ matrix.workspace }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        workspace:
+          - network
+          - vault-cluster
+          - app-cluster
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.14.8'
+
+      - name: Init
+        working-directory: terraform/workspaces/${{ matrix.workspace }}
+        run: terraform init -backend=false
+
+      - name: Validate
+        working-directory: terraform/workspaces/${{ matrix.workspace }}
         run: terraform validate
 
   go-build:
