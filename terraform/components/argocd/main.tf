@@ -5,6 +5,8 @@ resource "helm_release" "argocd" {
   repository       = "https://argoproj.github.io/argo-helm"
   chart            = "argo-cd"
   version          = "7.7.0"
+  wait             = true
+  timeout          = 600
 
   set {
     name  = "server.service.type"
@@ -38,34 +40,39 @@ resource "helm_release" "argocd" {
         }
       }
     }
-    extraObjects = [
-      {
-        apiVersion = "argoproj.io/v1alpha1"
-        kind       = "Application"
-        metadata = {
-          name      = "netlix-app"
-          namespace = "argocd"
-        }
-        spec = {
-          project = "default"
-          source = {
-            repoURL        = var.gitops_repo_url
-            targetRevision = var.gitops_target_revision
-            path           = "app/overlays/${var.environment}"
-          }
-          destination = {
-            server    = "https://kubernetes.default.svc"
-            namespace = var.target_namespace
-          }
-          syncPolicy = {
-            automated = {
-              prune    = true
-              selfHeal = true
-            }
-            syncOptions = ["CreateNamespace=true"]
-          }
-        }
-      }
-    ]
   })]
+}
+
+# ArgoCD Application deployed separately — the Application CRD is installed
+# by the Helm chart above, and needs time to register in the API server.
+resource "kubectl_manifest" "argocd_app" {
+  yaml_body = yamlencode({
+    apiVersion = "argoproj.io/v1alpha1"
+    kind       = "Application"
+    metadata = {
+      name      = "netlix-app"
+      namespace = "argocd"
+    }
+    spec = {
+      project = "default"
+      source = {
+        repoURL        = var.gitops_repo_url
+        targetRevision = var.gitops_target_revision
+        path           = "app/overlays/${var.environment}"
+      }
+      destination = {
+        server    = "https://kubernetes.default.svc"
+        namespace = var.target_namespace
+      }
+      syncPolicy = {
+        automated = {
+          prune    = true
+          selfHeal = true
+        }
+        syncOptions = ["CreateNamespace=true"]
+      }
+    }
+  })
+
+  depends_on = [helm_release.argocd]
 }
