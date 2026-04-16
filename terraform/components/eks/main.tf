@@ -34,14 +34,6 @@ module "eks" {
 
   enable_irsa = true
 
-  # Explicitly disable EKS Auto Mode — required by AWS provider >= 5.83.
-  # Module 20.33.0 always emits elastic_load_balancing and storage_config blocks;
-  # this setting makes compute_config also emit with enabled=false so all three
-  # are consistently false, satisfying provider validation.
-  cluster_compute_config = {
-    enabled = false
-  }
-
   cluster_addons = {
     coredns            = { most_recent = true }
     kube-proxy         = { most_recent = true }
