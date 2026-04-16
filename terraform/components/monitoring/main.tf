@@ -51,6 +51,7 @@ resource "aws_cloudwatch_metric_alarm" "rejected_connections" {
 # ─── RDS Alarms ───────────────────────────────────────────────────────────
 
 resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
+  count               = var.rds_instance_id != "" ? 1 : 0
   alarm_name          = "${var.project}-${var.environment}-rds-high-cpu"
   alarm_description   = "RDS instance CPU utilization exceeds 80%"
   comparison_operator = "GreaterThanThreshold"
@@ -71,6 +72,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "rds_free_storage" {
+  count               = var.rds_instance_id != "" ? 1 : 0
   alarm_name          = "${var.project}-${var.environment}-rds-low-storage"
   alarm_description   = "RDS free storage space is below 5 GB"
   comparison_operator = "LessThanThreshold"
@@ -91,6 +93,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_free_storage" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "rds_connections" {
+  count               = var.rds_instance_id != "" ? 1 : 0
   alarm_name          = "${var.project}-${var.environment}-rds-high-connections"
   alarm_description   = "RDS database connections exceed 80% of max"
   comparison_operator = "GreaterThanThreshold"
@@ -603,10 +606,13 @@ resource "aws_cloudwatch_dashboard" "main" {
         height = 3
         properties = {
           title = "All Alarms"
-          alarms = [
-            aws_cloudwatch_metric_alarm.rds_cpu.arn,
-            aws_cloudwatch_metric_alarm.rds_free_storage.arn,
-            aws_cloudwatch_metric_alarm.rds_connections.arn,
+          alarms = concat(
+            var.rds_instance_id != "" ? [
+              aws_cloudwatch_metric_alarm.rds_cpu[0].arn,
+              aws_cloudwatch_metric_alarm.rds_free_storage[0].arn,
+              aws_cloudwatch_metric_alarm.rds_connections[0].arn,
+            ] : [],
+            [
             aws_cloudwatch_metric_alarm.eks_node_not_ready.arn,
             aws_cloudwatch_metric_alarm.rejected_connections.arn,
             aws_cloudwatch_metric_alarm.pod_cpu_high.arn,
@@ -614,7 +620,7 @@ resource "aws_cloudwatch_dashboard" "main" {
             aws_cloudwatch_metric_alarm.pod_restart_high.arn,
             aws_cloudwatch_metric_alarm.node_cpu_high.arn,
             aws_cloudwatch_metric_alarm.node_memory_high.arn,
-          ]
+          ])
         }
       }
     ]
