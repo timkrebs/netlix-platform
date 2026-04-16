@@ -3,30 +3,41 @@ variable "vault_address" {
   type        = string
 }
 
+variable "enable_database_engine" {
+  description = "Enable Vault database secrets engine (requires RDS)"
+  type        = bool
+  default     = false
+}
+
 variable "rds_endpoint" {
   description = "RDS endpoint"
   type        = string
+  default     = ""
 }
 
 variable "rds_port" {
   description = "RDS port"
   type        = number
+  default     = 5432
 }
 
 variable "rds_admin_username" {
   description = "RDS admin username"
   type        = string
+  default     = ""
 }
 
 variable "rds_admin_password" {
   description = "RDS admin password"
   type        = string
   sensitive   = true
+  default     = ""
 }
 
 variable "db_name" {
   description = "Database name"
   type        = string
+  default     = ""
 }
 
 variable "github_org" {

@@ -14,8 +14,9 @@ variable "vpc_flow_log_group_arn" {
 }
 
 variable "rds_instance_id" {
-  description = "RDS instance identifier for CloudWatch alarms"
+  description = "RDS instance identifier for CloudWatch alarms (empty to skip RDS alarms)"
   type        = string
+  default     = ""
 }
 
 variable "eks_cluster_name" {

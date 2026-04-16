@@ -1,12 +1,16 @@
 resource "vault_mount" "database" {
+  count = var.enable_database_engine ? 1 : 0
+
   namespace = vault_namespace.env.path_fq
   path      = "database"
   type      = "database"
 }
 
 resource "vault_database_secret_backend_connection" "postgres" {
+  count = var.enable_database_engine ? 1 : 0
+
   namespace     = vault_namespace.env.path_fq
-  backend       = vault_mount.database.path
+  backend       = vault_mount.database[0].path
   name          = "netlix-db"
   allowed_roles = ["netlix-readwrite"]
 
@@ -18,10 +22,12 @@ resource "vault_database_secret_backend_connection" "postgres" {
 }
 
 resource "vault_database_secret_backend_role" "app" {
+  count = var.enable_database_engine ? 1 : 0
+
   namespace   = vault_namespace.env.path_fq
-  backend     = vault_mount.database.path
+  backend     = vault_mount.database[0].path
   name        = "netlix-readwrite"
-  db_name     = vault_database_secret_backend_connection.postgres.name
+  db_name     = vault_database_secret_backend_connection.postgres[0].name
   default_ttl = 3600
   max_ttl     = 86400
 

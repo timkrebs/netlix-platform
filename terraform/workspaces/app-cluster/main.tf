@@ -24,21 +24,6 @@ module "eks" {
   additional_admin_arns                = [data.aws_iam_session_context.current.issuer_arn]
 }
 
-# ─── RDS PostgreSQL ───────────────────────────────────────────────────────
-
-module "rds" {
-  source = "../../components/rds"
-
-  vpc_id             = local.vpc_id
-  private_subnet_ids = local.private_subnet_ids
-  db_instance_class  = var.db_instance_class
-  db_name            = var.db_name
-  db_engine_version  = var.db_engine_version
-  eks_security_group = module.eks.cluster_security_group_id
-  environment        = var.environment
-  project            = var.project
-}
-
 # ─── AWS Load Balancer Controller ─────────────────────────────────────────
 
 module "alb_controller" {
@@ -80,11 +65,6 @@ module "vault_config" {
   source = "../../components/vault-config"
 
   vault_address           = var.vault_address
-  rds_endpoint            = module.rds.endpoint
-  rds_port                = module.rds.port
-  rds_admin_username      = module.rds.admin_username
-  rds_admin_password      = module.rds.admin_password
-  db_name                 = var.db_name
   github_org              = var.github_org
   github_pat              = var.github_pat
   pki_allowed_domains     = [var.base_domain, "svc.cluster.local"]
@@ -113,7 +93,6 @@ module "monitoring" {
   environment            = var.environment
   project                = var.project
   vpc_flow_log_group_arn = local.flow_log_cloudwatch_log_group_arn
-  rds_instance_id        = module.rds.instance_id
   eks_cluster_name       = module.eks.cluster_name
   alert_email            = var.alert_email
 }

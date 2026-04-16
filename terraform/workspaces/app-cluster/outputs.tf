@@ -8,11 +8,6 @@ output "cluster_name" {
   value       = module.eks.cluster_name
 }
 
-output "rds_endpoint" {
-  description = "RDS PostgreSQL endpoint"
-  value       = module.rds.endpoint
-}
-
 output "vault_namespace" {
   description = "Vault namespace for this environment"
   value       = module.vault_config.vault_namespace

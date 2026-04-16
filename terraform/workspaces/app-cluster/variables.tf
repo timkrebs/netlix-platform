@@ -42,26 +42,6 @@ variable "cluster_endpoint_public_access_cidrs" {
   default     = ["0.0.0.0/0"]
 }
 
-# ─── RDS ───────────────────────────────────────────────────────────────────
-
-variable "db_instance_class" {
-  description = "RDS instance class"
-  type        = string
-  default     = "db.t4g.medium"
-}
-
-variable "db_name" {
-  description = "Database name"
-  type        = string
-  default     = "netlix"
-}
-
-variable "db_engine_version" {
-  description = "PostgreSQL engine version"
-  type        = string
-  default     = "16.6"
-}
-
 # ─── Vault ─────────────────────────────────────────────────────────────────
 
 variable "vault_address" {
