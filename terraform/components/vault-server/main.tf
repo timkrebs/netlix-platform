@@ -272,6 +272,7 @@ resource "helm_release" "vault" {
   set {
     name  = "server.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-cross-zone-load-balancing-enabled"
     value = "true"
+    type  = "string"
   }
   set {
     name  = "server.service.annotations.external-dns\\.alpha\\.kubernetes\\.io/hostname"
