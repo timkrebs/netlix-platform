@@ -1,9 +1,10 @@
 # ─── cert-manager TLS for Vault server ─────────────────────────────────────
 #
 # Chain: SelfSigned Issuer → CA Certificate → CA Issuer → Server Certificate
-# The vault namespace must exist before these resources are created.
-# The Helm release creates the namespace, so these depend on it implicitly
-# via the kubernetes_namespace data source.
+#
+# Uses kubectl_manifest instead of kubernetes_manifest because the latter
+# requires an API connection at plan time (to validate CRD schemas), which
+# fails on initial deploy when the EKS cluster doesn't yet exist.
 
 resource "kubernetes_namespace" "vault" {
   metadata {
@@ -14,8 +15,8 @@ resource "kubernetes_namespace" "vault" {
   }
 }
 
-resource "kubernetes_manifest" "selfsigned_issuer" {
-  manifest = {
+resource "kubectl_manifest" "selfsigned_issuer" {
+  yaml_body = yamlencode({
     apiVersion = "cert-manager.io/v1"
     kind       = "Issuer"
     metadata = {
@@ -25,11 +26,11 @@ resource "kubernetes_manifest" "selfsigned_issuer" {
     spec = {
       selfSigned = {}
     }
-  }
+  })
 }
 
-resource "kubernetes_manifest" "vault_ca_cert" {
-  manifest = {
+resource "kubectl_manifest" "vault_ca_cert" {
+  yaml_body = yamlencode({
     apiVersion = "cert-manager.io/v1"
     kind       = "Certificate"
     metadata = {
@@ -40,22 +41,24 @@ resource "kubernetes_manifest" "vault_ca_cert" {
       isCA       = true
       commonName = "Vault CA"
       secretName = "vault-ca"
-      duration   = "87600h" # 10 years
+      duration   = "87600h"
       privateKey = {
         algorithm = "ECDSA"
         size      = 256
       }
       issuerRef = {
-        name  = kubernetes_manifest.selfsigned_issuer.manifest.metadata.name
+        name  = "vault-selfsigned"
         kind  = "Issuer"
         group = "cert-manager.io"
       }
     }
-  }
+  })
+
+  depends_on = [kubectl_manifest.selfsigned_issuer]
 }
 
-resource "kubernetes_manifest" "vault_ca_issuer" {
-  manifest = {
+resource "kubectl_manifest" "vault_ca_issuer" {
+  yaml_body = yamlencode({
     apiVersion = "cert-manager.io/v1"
     kind       = "Issuer"
     metadata = {
@@ -67,13 +70,13 @@ resource "kubernetes_manifest" "vault_ca_issuer" {
         secretName = "vault-ca"
       }
     }
-  }
+  })
 
-  depends_on = [kubernetes_manifest.vault_ca_cert]
+  depends_on = [kubectl_manifest.vault_ca_cert]
 }
 
-resource "kubernetes_manifest" "vault_server_cert" {
-  manifest = {
+resource "kubectl_manifest" "vault_server_cert" {
+  yaml_body = yamlencode({
     apiVersion = "cert-manager.io/v1"
     kind       = "Certificate"
     metadata = {
@@ -82,8 +85,8 @@ resource "kubernetes_manifest" "vault_server_cert" {
     }
     spec = {
       secretName  = "vault-server-tls"
-      duration    = "8760h" # 1 year
-      renewBefore = "720h"  # 30 days before expiry
+      duration    = "8760h"
+      renewBefore = "720h"
       privateKey = {
         algorithm = "ECDSA"
         size      = 256
@@ -104,10 +107,12 @@ resource "kubernetes_manifest" "vault_server_cert" {
       ]
       ipAddresses = ["127.0.0.1"]
       issuerRef = {
-        name  = kubernetes_manifest.vault_ca_issuer.manifest.metadata.name
+        name  = "vault-ca-issuer"
         kind  = "Issuer"
         group = "cert-manager.io"
       }
     }
-  }
+  })
+
+  depends_on = [kubectl_manifest.vault_ca_issuer]
 }

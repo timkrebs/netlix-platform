@@ -29,7 +29,7 @@ resource "helm_release" "vault" {
 
   # Vault needs the TLS secret and license secret to exist before starting
   depends_on = [
-    kubernetes_manifest.vault_server_cert,
+    kubectl_manifest.vault_server_cert,
     kubernetes_secret.vault_license,
   ]
 
