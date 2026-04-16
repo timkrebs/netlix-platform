@@ -38,7 +38,6 @@ variable "github_pat" {
   description = "GitHub personal access token"
   type        = string
   sensitive   = true
-  ephemeral   = true
 }
 
 variable "pki_allowed_domains" {

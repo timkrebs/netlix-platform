@@ -18,3 +18,9 @@ variable "vault_ca_secret_name" {
   type        = string
   default     = "vault-ca"
 }
+
+variable "vault_skip_tls_verify" {
+  description = "Skip TLS verification for Vault connection (use when Vault runs on a separate cluster and the CA cert is not available locally)"
+  type        = bool
+  default     = false
+}
