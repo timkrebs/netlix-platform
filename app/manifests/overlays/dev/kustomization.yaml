@@ -7,7 +7,7 @@ resources:
 images:
 - name: netlix-web
   newName: ghcr.io/timkrebs/netlix-platform/web
-  newTag: dev-4c23abedc87bdf62047aee954a074a3b06a798a3
+  newTag: dev-b71abba5cc6c26108f8d35ca2f4a521832362038
 
 patches:
 - path: patch-web-ingress.yaml
