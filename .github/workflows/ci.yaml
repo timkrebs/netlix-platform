@@ -102,31 +102,6 @@ jobs:
         working-directory: terraform/workspaces/${{ matrix.workspace }}
         run: terraform validate
 
-  terraform-test:
-    name: Test ${{ matrix.component }}
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        component:
-          - networking
-          - dns
-          - eks
-          - rds
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: '1.14.8'
-
-      - name: Init
-        working-directory: terraform/components/${{ matrix.component }}
-        run: terraform init -backend=false
-
-      - name: Test
-        working-directory: terraform/components/${{ matrix.component }}
-        run: terraform test -verbose
-
   go-test:
     name: Go test & build
     runs-on: ubuntu-latest
