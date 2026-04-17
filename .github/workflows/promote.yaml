@@ -21,6 +21,11 @@ on:
 permissions:
   contents: read
   pull-requests: write
+
+jobs:
+  promote:
+    name: 'Create promotion PR (${{ inputs.from }} → ${{ inputs.to }})'
+    runs-on: ubuntu-latest
     outputs:
       pr_number: ${{ steps.pr.outputs.number }}
       pr_url: ${{ steps.pr.outputs.url }}
@@ -65,6 +70,7 @@ permissions:
             --base "${{ inputs.to }}" \
             --head "${{ inputs.from }}" \
             --title "promote(${{ inputs.from }} → ${{ inputs.to }}): ${{ steps.summary.outputs.count }} commits" \
+            --label "promotion" \
             --body "$(cat <<'PREOF'
           ## Promotion: ${{ inputs.from }} → ${{ inputs.to }}
 
@@ -77,6 +83,7 @@ permissions:
           ### Pre-merge Gates
           - [ ] CI passes on source branch
           - [ ] **Load test passed** (auto-triggered by this workflow)
+          - [ ] Smoke test passed
           - [ ] No known regressions
 
           ---
@@ -182,7 +189,6 @@ permissions:
             EMOJI="x"
           fi
 
-          # Parse stats if available
           BODY=":${EMOJI}: **Load Test ${RESULT}** — ${{ inputs.from }} → ${{ inputs.to }}"
           BODY="${BODY}\n\n| Metric | Value |"
           BODY="${BODY}\n|--------|-------|"
@@ -215,3 +221,31 @@ permissions:
           name: promotion-load-test-${{ inputs.from }}-${{ github.run_number }}
           path: load-testing/results/
           retention-days: 30
+
+  smoke-test:
+    name: 'Smoke test (${{ inputs.from }})'
+    needs: load-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve target host
+        id: target
+        run: |
+          ENV="${{ inputs.from }}"
+          echo "host=https://app.${ENV}.netlix.dev" >> "$GITHUB_OUTPUT"
+
+      - name: Verify health endpoint
+        run: |
+          STATUS=$(curl -sf "${{ steps.target.outputs.host }}/health" | jq -r '.status')
+          [[ "$STATUS" == "healthy" ]] || { echo "Health check failed: $STATUS"; exit 1; }
+
+      - name: Verify readiness endpoint
+        run: |
+          STATUS=$(curl -sf "${{ steps.target.outputs.host }}/ready" | jq -r '.status')
+          [[ "$STATUS" == "ready" ]] || { echo "Readiness check failed: $STATUS"; exit 1; }
+
+      - name: Verify root endpoint returns valid response
+        run: |
+          RESP=$(curl -sf "${{ steps.target.outputs.host }}/")
+          echo "$RESP" | jq -e '.name' > /dev/null || { echo "Invalid response"; exit 1; }
+          echo "$RESP" | jq -e '.environment' > /dev/null || { echo "Missing environment"; exit 1; }
+          echo "Smoke test passed: $(echo "$RESP" | jq -c '{name, environment, version}')"

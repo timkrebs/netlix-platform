@@ -63,7 +63,6 @@ jobs:
           - external-dns
           - argocd
           - monitoring
-          - datadog-operator
     steps:
       - uses: actions/checkout@v4
 
@@ -103,8 +102,33 @@ jobs:
         working-directory: terraform/workspaces/${{ matrix.workspace }}
         run: terraform validate
 
-  go-build:
-    name: Go build & vet
+  terraform-test:
+    name: Test ${{ matrix.component }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component:
+          - networking
+          - dns
+          - eks
+          - rds
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.14.8'
+
+      - name: Init
+        working-directory: terraform/components/${{ matrix.component }}
+        run: terraform init -backend=false
+
+      - name: Test
+        working-directory: terraform/components/${{ matrix.component }}
+        run: terraform test -verbose
+
+  go-test:
+    name: Go test & build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -117,9 +141,25 @@ jobs:
         working-directory: app/server
         run: go vet ./...
 
+      - name: Test with coverage
+        working-directory: app/server
+        run: go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Display coverage
+        working-directory: app/server
+        run: go tool cover -func=coverage.out
+
       - name: Build
         working-directory: app/server
         run: go build -o /dev/null .
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-coverage
+          path: app/server/coverage.out
+          retention-days: 14
 
   validate-manifests:
     name: Validate K8s manifests
