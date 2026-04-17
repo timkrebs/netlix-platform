@@ -4,6 +4,23 @@ locals {
   vault_namespace = kubernetes_namespace.vault.metadata[0].name
 }
 
+# ─── Encrypted StorageClass for Vault data (gp3 + KMS) ───────────────────
+
+resource "kubernetes_storage_class" "vault_encrypted" {
+  metadata {
+    name = "gp3-encrypted"
+  }
+
+  storage_provisioner = "ebs.csi.aws.com"
+  reclaim_policy      = "Retain"
+  volume_binding_mode = "WaitForFirstConsumer"
+
+  parameters = {
+    type      = "gp3"
+    encrypted = "true"
+  }
+}
+
 # Enterprise license stored as a Kubernetes Secret
 resource "kubernetes_secret" "vault_license" {
   metadata {
@@ -168,7 +185,7 @@ resource "helm_release" "vault" {
     value = module.vault_kms_irsa.iam_role_arn
   }
 
-  # ── Data storage (EBS via CSI) ──────────────────────────────────────────
+  # ── Data storage (encrypted gp3 via EBS CSI) ────────────────────────────
   set {
     name  = "server.dataStorage.enabled"
     value = "true"
@@ -179,10 +196,10 @@ resource "helm_release" "vault" {
   }
   set {
     name  = "server.dataStorage.storageClass"
-    value = "gp2"
+    value = kubernetes_storage_class.vault_encrypted.metadata[0].name
   }
 
-  # ── Audit storage ──────────────────────────────────────────────────────
+  # ── Audit storage (encrypted gp3 via EBS CSI) ─────────────────────────
   set {
     name  = "server.auditStorage.enabled"
     value = "true"
@@ -193,7 +210,7 @@ resource "helm_release" "vault" {
   }
   set {
     name  = "server.auditStorage.storageClass"
-    value = "gp2"
+    value = kubernetes_storage_class.vault_encrypted.metadata[0].name
   }
 
   # ── Resources ───────────────────────────────────────────────────────────
