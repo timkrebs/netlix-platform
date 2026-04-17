@@ -8,6 +8,11 @@ variable "cluster_version" {
   description = "Kubernetes version"
   type        = string
   default     = "1.31"
+
+  validation {
+    condition     = can(regex("^1\\.[0-9]+$", var.cluster_version))
+    error_message = "cluster_version must be a valid Kubernetes minor version (e.g. 1.31)."
+  }
 }
 
 variable "node_instance_types" {
@@ -32,6 +37,11 @@ variable "node_max_size" {
   description = "Maximum number of nodes"
   type        = number
   default     = 5
+
+  validation {
+    condition     = var.node_max_size >= var.node_min_size
+    error_message = "node_max_size must be greater than or equal to node_min_size."
+  }
 }
 
 variable "cluster_endpoint_public_access_cidrs" {
@@ -55,6 +65,11 @@ variable "base_domain" {
 variable "environment" {
   description = "Environment name (dev, staging)"
   type        = string
+
+  validation {
+    condition     = contains(["dev", "staging"], var.environment)
+    error_message = "Environment must be dev or staging."
+  }
 }
 
 variable "project" {

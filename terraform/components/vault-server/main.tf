@@ -79,61 +79,43 @@ resource "helm_release" "vault" {
 
   # ── Raft + KMS seal configuration ──────────────────────────────────────
   set {
-    name  = "server.ha.raft.config"
-    value = <<-EOT
-      ui = true
-
-      listener "tcp" {
-        tls_disable     = 0
-        address         = "[::]:8200"
-        cluster_address = "[::]:8201"
-        tls_cert_file   = "/vault/userconfig/vault-server-tls/tls.crt"
-        tls_key_file    = "/vault/userconfig/vault-server-tls/tls.key"
-        tls_client_ca_file = "/vault/userconfig/vault-server-tls/ca.crt"
-      }
-
-      storage "raft" {
-        path = "/vault/data"
-
-        retry_join {
-          leader_api_addr         = "https://vault-0.vault-internal:8200"
-          leader_ca_cert_file     = "/vault/userconfig/vault-server-tls/ca.crt"
-          leader_client_cert_file = "/vault/userconfig/vault-server-tls/tls.crt"
-          leader_client_key_file  = "/vault/userconfig/vault-server-tls/tls.key"
-        }
-        retry_join {
-          leader_api_addr         = "https://vault-1.vault-internal:8200"
-          leader_ca_cert_file     = "/vault/userconfig/vault-server-tls/ca.crt"
-          leader_client_cert_file = "/vault/userconfig/vault-server-tls/tls.crt"
-          leader_client_key_file  = "/vault/userconfig/vault-server-tls/tls.key"
-        }
-        retry_join {
-          leader_api_addr         = "https://vault-2.vault-internal:8200"
-          leader_ca_cert_file     = "/vault/userconfig/vault-server-tls/ca.crt"
-          leader_client_cert_file = "/vault/userconfig/vault-server-tls/tls.crt"
-          leader_client_key_file  = "/vault/userconfig/vault-server-tls/tls.key"
-        }
-        retry_join {
-          leader_api_addr         = "https://vault-3.vault-internal:8200"
-          leader_ca_cert_file     = "/vault/userconfig/vault-server-tls/ca.crt"
-          leader_client_cert_file = "/vault/userconfig/vault-server-tls/tls.crt"
-          leader_client_key_file  = "/vault/userconfig/vault-server-tls/tls.key"
-        }
-        retry_join {
-          leader_api_addr         = "https://vault-4.vault-internal:8200"
-          leader_ca_cert_file     = "/vault/userconfig/vault-server-tls/ca.crt"
-          leader_client_cert_file = "/vault/userconfig/vault-server-tls/tls.crt"
-          leader_client_key_file  = "/vault/userconfig/vault-server-tls/tls.key"
-        }
-      }
-
-      seal "awskms" {
-        region     = "${var.aws_region}"
-        kms_key_id = "${aws_kms_key.vault_unseal.key_id}"
-      }
-
-      service_registration "kubernetes" {}
-    EOT
+    name = "server.ha.raft.config"
+    value = join("\n", concat(
+      [
+        "ui = true",
+        "",
+        "listener \"tcp\" {",
+        "  tls_disable     = 0",
+        "  address         = \"[::]:8200\"",
+        "  cluster_address = \"[::]:8201\"",
+        "  tls_cert_file   = \"/vault/userconfig/vault-server-tls/tls.crt\"",
+        "  tls_key_file    = \"/vault/userconfig/vault-server-tls/tls.key\"",
+        "  tls_client_ca_file = \"/vault/userconfig/vault-server-tls/ca.crt\"",
+        "}",
+        "",
+        "storage \"raft\" {",
+        "  path = \"/vault/data\"",
+      ],
+      # Generate retry_join blocks dynamically based on vault_replicas
+      flatten([for i in range(var.vault_replicas) : [
+        "  retry_join {",
+        "    leader_api_addr         = \"https://vault-${i}.vault-internal:8200\"",
+        "    leader_ca_cert_file     = \"/vault/userconfig/vault-server-tls/ca.crt\"",
+        "    leader_client_cert_file = \"/vault/userconfig/vault-server-tls/tls.crt\"",
+        "    leader_client_key_file  = \"/vault/userconfig/vault-server-tls/tls.key\"",
+        "  }",
+      ]]),
+      [
+        "}",
+        "",
+        "seal \"awskms\" {",
+        "  region     = \"${var.aws_region}\"",
+        "  kms_key_id = \"${aws_kms_key.vault_unseal.key_id}\"",
+        "}",
+        "",
+        "service_registration \"kubernetes\" {}",
+      ],
+    ))
   }
 
   # ── TLS volume from cert-manager secret ─────────────────────────────────

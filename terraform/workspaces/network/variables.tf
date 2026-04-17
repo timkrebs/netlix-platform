@@ -7,6 +7,11 @@ variable "aws_region" {
 variable "vpc_cidr" {
   description = "CIDR block for the VPC"
   type        = string
+
+  validation {
+    condition     = can(cidrhost(var.vpc_cidr, 0))
+    error_message = "vpc_cidr must be a valid CIDR block (e.g. 10.0.0.0/16)."
+  }
 }
 
 variable "azs" {
@@ -29,6 +34,11 @@ variable "route53_zone_id" {
 variable "environment" {
   description = "Environment name (dev, staging)"
   type        = string
+
+  validation {
+    condition     = contains(["dev", "staging"], var.environment)
+    error_message = "Environment must be dev or staging."
+  }
 }
 
 variable "project" {

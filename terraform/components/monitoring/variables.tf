@@ -30,6 +30,12 @@ variable "alert_email" {
   default     = ""
 }
 
+variable "app_namespace" {
+  description = "Kubernetes namespace for application pod alarms"
+  type        = string
+  default     = "consul"
+}
+
 variable "log_retention_days" {
   description = "Retention period for CloudWatch log groups"
   type        = number

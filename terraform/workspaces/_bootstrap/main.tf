@@ -19,7 +19,7 @@ locals {
     }
     app-cluster = {
       working_directory = "terraform/workspaces/app-cluster"
-      description       = "App EKS cluster + RDS + ALB + ArgoCD + VSO + monitoring"
+      description       = "App EKS cluster + ALB + ArgoCD + VSO + Vault config + monitoring"
     }
   }
 

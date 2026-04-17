@@ -139,7 +139,7 @@ resource "aws_cloudwatch_metric_alarm" "eks_node_not_ready" {
 
 resource "aws_cloudwatch_metric_alarm" "pod_cpu_high" {
   alarm_name          = "${var.project}-${var.environment}-pod-cpu-high"
-  alarm_description   = "Pod CPU utilization exceeds 80% in consul namespace"
+  alarm_description   = "Pod CPU utilization exceeds 80% in ${var.app_namespace} namespace"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 3
   metric_name         = "pod_cpu_utilization"
@@ -151,7 +151,7 @@ resource "aws_cloudwatch_metric_alarm" "pod_cpu_high" {
 
   dimensions = {
     ClusterName = var.eks_cluster_name
-    Namespace   = "consul"
+    Namespace   = var.app_namespace
   }
 
   alarm_actions = [aws_sns_topic.alerts.arn]
@@ -160,7 +160,7 @@ resource "aws_cloudwatch_metric_alarm" "pod_cpu_high" {
 
 resource "aws_cloudwatch_metric_alarm" "pod_memory_high" {
   alarm_name          = "${var.project}-${var.environment}-pod-memory-high"
-  alarm_description   = "Pod memory utilization exceeds 80% in consul namespace"
+  alarm_description   = "Pod memory utilization exceeds 80% in ${var.app_namespace} namespace"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 3
   metric_name         = "pod_memory_utilization"
@@ -172,7 +172,7 @@ resource "aws_cloudwatch_metric_alarm" "pod_memory_high" {
 
   dimensions = {
     ClusterName = var.eks_cluster_name
-    Namespace   = "consul"
+    Namespace   = var.app_namespace
   }
 
   alarm_actions = [aws_sns_topic.alerts.arn]
@@ -181,7 +181,7 @@ resource "aws_cloudwatch_metric_alarm" "pod_memory_high" {
 
 resource "aws_cloudwatch_metric_alarm" "pod_restart_high" {
   alarm_name          = "${var.project}-${var.environment}-pod-restarts"
-  alarm_description   = "Pods restarting frequently in consul namespace"
+  alarm_description   = "Pods restarting frequently in ${var.app_namespace} namespace"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   metric_name         = "pod_number_of_container_restarts"
@@ -193,7 +193,7 @@ resource "aws_cloudwatch_metric_alarm" "pod_restart_high" {
 
   dimensions = {
     ClusterName = var.eks_cluster_name
-    Namespace   = "consul"
+    Namespace   = var.app_namespace
   }
 
   alarm_actions = [aws_sns_topic.alerts.arn]
