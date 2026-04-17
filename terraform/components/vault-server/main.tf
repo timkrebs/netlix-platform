@@ -196,7 +196,7 @@ resource "helm_release" "vault" {
   }
   set {
     name  = "server.dataStorage.storageClass"
-    value = kubernetes_storage_class.vault_encrypted.metadata[0].name
+    value = var.storage_class
   }
 
   # ── Audit storage (encrypted gp3 via EBS CSI) ─────────────────────────
@@ -210,7 +210,7 @@ resource "helm_release" "vault" {
   }
   set {
     name  = "server.auditStorage.storageClass"
-    value = kubernetes_storage_class.vault_encrypted.metadata[0].name
+    value = var.storage_class
   }
 
   # ── Resources ───────────────────────────────────────────────────────────

@@ -66,3 +66,9 @@ variable "vault_replicas" {
   type        = number
   default     = 5
 }
+
+variable "storage_class" {
+  description = "Kubernetes StorageClass for Vault data and audit volumes. Use gp3-encrypted for new deployments."
+  type        = string
+  default     = "gp2"
+}
