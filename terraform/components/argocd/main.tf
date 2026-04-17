@@ -61,7 +61,7 @@ resource "kubectl_manifest" "argocd_app" {
       source = {
         repoURL        = var.gitops_repo_url
         targetRevision = var.gitops_target_revision
-        path           = "app/overlays/${var.environment}"
+        path           = "app/manifests/overlays/${var.environment}"
       }
       destination = {
         server    = "https://kubernetes.default.svc"

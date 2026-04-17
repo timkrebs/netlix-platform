@@ -3,7 +3,7 @@ name: CD
 on:
   push:
     branches: [dev, staging]
-    paths: ['app/server/**']
+    paths: ['app/services/web/**']
 
 permissions:
   contents: write
@@ -48,7 +48,7 @@ jobs:
           docker build \
             -t "${URI}" \
             -t "${REGISTRY}/${IMAGE_NAME}:${ENV}-latest" \
-            app/server/
+            app/services/web/
 
       - name: Scan image for vulnerabilities
         uses: aquasecurity/trivy-action@v0.35.0
@@ -95,14 +95,14 @@ jobs:
       - name: Update overlay image tag
         run: |
           ENV="${{ needs.build-and-push.outputs.environment }}"
-          cd "app/overlays/${ENV}"
+          cd "app/manifests/overlays/${ENV}"
           kustomize edit set image "netlix-web=${REGISTRY}/${IMAGE_NAME}:${{ needs.build-and-push.outputs.image_tag }}"
 
       - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add app/overlays/
+          git add app/manifests/overlays/
           git diff --staged --quiet && echo "No changes to commit" && exit 0
           git commit -m "cd(${{ needs.build-and-push.outputs.environment }}): update image to ${{ needs.build-and-push.outputs.image_tag }}"
           git push
