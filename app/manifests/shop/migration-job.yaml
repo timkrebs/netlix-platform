@@ -1,0 +1,38 @@
+# One-shot Job that applies schema.sql + seed.sql against Postgres.
+# The SQL is delivered via a ConfigMap. Re-running the Job is safe —
+# the SQL uses IF NOT EXISTS / ON CONFLICT DO NOTHING.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: shop-schema-migrate
+  namespace: consul
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: orders
+      containers:
+        - name: psql
+          image: postgres:16-alpine
+          envFrom:
+            - configMapRef:
+                name: shop-db-config
+            - secretRef:
+                name: shop-db
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              export PGPASSWORD="$DB_PASSWORD"
+              psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -f /sql/schema.sql
+              psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -f /sql/seed.sql
+          volumeMounts:
+            - name: sql
+              mountPath: /sql
+              readOnly: true
+      volumes:
+        - name: sql
+          configMap:
+            name: shop-schema-sql

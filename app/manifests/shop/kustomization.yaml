@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: consul
+
+# SQL assets bundled into a ConfigMap for the migration Job.
+configMapGenerator:
+  - name: shop-schema-sql
+    files:
+      - sql/schema.sql
+      - sql/seed.sql
+
+# Image refs (netlix-catalog, netlix-auth, ...) are placeholders. Each
+# environment overlay rewrites them to the real GHCR ref + tag — see
+# overlays/dev/kustomization.yaml.
+
+resources:
+  - db-config.yaml
+  - vault-secrets.yaml
+  - postgres.yaml
+  - catalog.yaml
+  - auth.yaml
+  - orders.yaml
+  - gateway.yaml
+  - migration-job.yaml

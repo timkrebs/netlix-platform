@@ -3,30 +3,36 @@ kind: Kustomization
 
 resources:
   - ../../base
+  - ../../shop
 
 images:
-  - name: netlix-web
-    newName: ghcr.io/timkrebs/netlix-platform/web
-    newTag: latest
+  - name: netlix-catalog
+    newName: ghcr.io/timkrebs/netlix-platform/catalog
+    newTag: staging-latest
+  - name: netlix-auth
+    newName: ghcr.io/timkrebs/netlix-platform/auth
+    newTag: staging-latest
+  - name: netlix-orders
+    newName: ghcr.io/timkrebs/netlix-platform/orders
+    newTag: staging-latest
+  - name: netlix-gateway
+    newName: ghcr.io/timkrebs/netlix-platform/gateway
+    newTag: staging-latest
 
 patches:
-  - path: patch-web-ingress.yaml
-    target:
-      kind: Ingress
-      name: web
-  - path: patch-web-env.yaml
-    target:
-      kind: Deployment
-      name: web
-  - path: patch-api-env.yaml
-    target:
-      kind: Deployment
-      name: api
   - path: patch-vault-auth.yaml
     target:
       kind: VaultAuth
       name: default
-  - path: patch-vault-pki.yaml
+  - path: patch-shop-db-namespace.yaml
     target:
-      kind: VaultPKISecret
-      name: web-tls
+      kind: VaultStaticSecret
+      name: shop-db
+  - path: patch-shop-jwt-namespace.yaml
+    target:
+      kind: VaultStaticSecret
+      name: shop-jwt
+  - path: patch-shop-ingress.yaml
+    target:
+      kind: Ingress
+      name: shop

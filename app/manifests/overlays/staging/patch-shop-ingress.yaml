@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shop
+  namespace: consul
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: app.staging.netlix.dev
+spec:
+  rules:
+    - host: app.staging.netlix.dev
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway
+                port:
+                  number: 8080

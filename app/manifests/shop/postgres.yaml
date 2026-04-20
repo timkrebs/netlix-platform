@@ -1,0 +1,89 @@
+# In-cluster Postgres for the netlix shop.
+#
+# Single-replica StatefulSet with a 10Gi gp3-encrypted PVC. Sized for
+# dev — not HA. The bootstrap admin password comes from the same
+# `shop-db` k8s Secret that VSO populates from Vault, so the database
+# user that Postgres creates on first start is the same user the shop
+# services authenticate as.
+#
+# The shop services' migration Job applies schema.sql + seed.sql once
+# this Pod is Ready.
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: netlix-postgres
+  namespace: consul
+  labels:
+    app: netlix-postgres
+spec:
+  clusterIP: None
+  selector:
+    app: netlix-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: netlix-postgres
+  namespace: consul
+spec:
+  serviceName: netlix-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: netlix-postgres
+  template:
+    metadata:
+      labels:
+        app: netlix-postgres
+    spec:
+      securityContext:
+        # Postgres image runs as uid 999 (the `postgres` user it creates),
+        # so don't force runAsNonRoot here — let the image handle it.
+        fsGroup: 999
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_DB
+              value: netlix
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          envFrom:
+            # Provides POSTGRES_USER + POSTGRES_PASSWORD from VSO-managed
+            # Secret. Pod will CrashLoopBackOff until VSO writes the Secret
+            # — that's expected on a cold cluster.
+            - secretRef:
+                name: shop-db
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits:   { cpu: 500m, memory: 512Mi }
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "$(POSTGRES_USER)", "-d", "netlix"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "$(POSTGRES_USER)", "-d", "netlix"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: gp3-encrypted
+        resources:
+          requests:
+            storage: 10Gi

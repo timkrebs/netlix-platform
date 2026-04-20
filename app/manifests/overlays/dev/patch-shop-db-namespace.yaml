@@ -1,8 +1,7 @@
 apiVersion: secrets.hashicorp.com/v1beta1
-kind: VaultPKISecret
+kind: VaultStaticSecret
 metadata:
-  name: web-tls
+  name: shop-db
   namespace: consul
 spec:
   namespace: dev
-  commonName: app.dev.netlix.dev

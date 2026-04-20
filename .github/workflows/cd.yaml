@@ -3,7 +3,15 @@ name: CD
 on:
   push:
     branches: [dev, staging]
-    paths: ['app/services/web/**']
+    paths:
+      - 'app/services/catalog/**'
+      - 'app/services/auth/**'
+      - 'app/services/orders/**'
+      - 'app/services/gateway/**'
+      - 'app/services/frontend/**'
+      - 'app/services/schema/**'
+      - 'app/manifests/**'
+      - '.github/workflows/cd.yaml'
 
 permissions:
   contents: write
@@ -11,15 +19,32 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/web
 
 jobs:
   build-and-push:
-    name: Build & Push to GHCR
+    name: Build & Push ${{ matrix.service }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The gateway image bundles the SPA, so its build context is the
+        # whole `app/services` directory. The other services build from
+        # their own subdirectory.
+        include:
+          - service: catalog
+            context: app/services/catalog
+            dockerfile: Dockerfile
+          - service: auth
+            context: app/services/auth
+            dockerfile: Dockerfile
+          - service: orders
+            context: app/services/orders
+            dockerfile: Dockerfile
+          - service: gateway
+            context: app/services
+            dockerfile: gateway/Dockerfile
     outputs:
       image_tag: ${{ steps.meta.outputs.tag }}
-      image_uri: ${{ steps.meta.outputs.uri }}
       environment: ${{ steps.env.outputs.environment }}
     steps:
       - uses: actions/checkout@v4
@@ -35,20 +60,24 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and tag image
+      - name: Compute image refs
         id: meta
         run: |
           ENV="${{ steps.env.outputs.environment }}"
           SHA="${{ github.sha }}"
           TAG="${ENV}-${SHA}"
-          URI="${REGISTRY}/${IMAGE_NAME}:${TAG}"
+          IMAGE="${REGISTRY}/${{ github.repository }}/${{ matrix.service }}"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "uri=${URI}" >> "$GITHUB_OUTPUT"
+          echo "uri=${IMAGE}:${TAG}" >> "$GITHUB_OUTPUT"
+          echo "uri_latest=${IMAGE}:${ENV}-latest" >> "$GITHUB_OUTPUT"
 
+      - name: Build image
+        run: |
           docker build \
-            -t "${URI}" \
-            -t "${REGISTRY}/${IMAGE_NAME}:${ENV}-latest" \
-            app/services/web/
+            -f "${{ matrix.context }}/${{ matrix.dockerfile }}" \
+            -t "${{ steps.meta.outputs.uri }}" \
+            -t "${{ steps.meta.outputs.uri_latest }}" \
+            "${{ matrix.context }}"
 
       - name: Scan image for vulnerabilities
         uses: aquasecurity/trivy-action@v0.35.0
@@ -64,20 +93,19 @@ jobs:
         with:
           image: ${{ steps.meta.outputs.uri }}
           format: spdx-json
-          output-file: sbom.spdx.json
+          output-file: sbom-${{ matrix.service }}.spdx.json
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with:
-          name: sbom-${{ steps.env.outputs.environment }}-${{ github.sha }}
-          path: sbom.spdx.json
+          name: sbom-${{ matrix.service }}-${{ steps.env.outputs.environment }}-${{ github.sha }}
+          path: sbom-${{ matrix.service }}.spdx.json
           retention-days: 90
 
       - name: Push to GHCR
         run: |
-          ENV="${{ steps.env.outputs.environment }}"
           docker push "${{ steps.meta.outputs.uri }}"
-          docker push "${REGISTRY}/${IMAGE_NAME}:${ENV}-latest"
+          docker push "${{ steps.meta.outputs.uri_latest }}"
 
   update-manifests:
     name: Update Kustomize manifests
@@ -92,11 +120,15 @@ jobs:
       - name: Setup Kustomize
         uses: imranismail/setup-kustomize@v2
 
-      - name: Update overlay image tag
+      - name: Pin all four shop images to this SHA
         run: |
           ENV="${{ needs.build-and-push.outputs.environment }}"
+          TAG="${{ needs.build-and-push.outputs.image_tag }}"
+          REPO="${REGISTRY}/${{ github.repository }}"
           cd "app/manifests/overlays/${ENV}"
-          kustomize edit set image "netlix-web=${REGISTRY}/${IMAGE_NAME}:${{ needs.build-and-push.outputs.image_tag }}"
+          for svc in catalog auth orders gateway; do
+            kustomize edit set image "netlix-${svc}=${REPO}/${svc}:${TAG}"
+          done
 
       - name: Commit and push
         run: |
@@ -104,7 +136,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add app/manifests/overlays/
           git diff --staged --quiet && echo "No changes to commit" && exit 0
-          git commit -m "cd(${{ needs.build-and-push.outputs.environment }}): update image to ${{ needs.build-and-push.outputs.image_tag }}"
+          git commit -m "cd(${{ needs.build-and-push.outputs.environment }}): bump shop images to ${{ needs.build-and-push.outputs.image_tag }}"
           git push
 
   verify-deployment:
@@ -124,26 +156,23 @@ jobs:
           echo "Waiting 90s for ArgoCD to detect and sync the manifest change..."
           sleep 90
 
-      - name: Health check
+      - name: Health check (gateway)
         run: |
-          for i in $(seq 1 5); do
+          for i in $(seq 1 10); do
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
               --connect-timeout 10 --max-time 15 \
               "${{ steps.target.outputs.host }}/health")
             echo "Attempt ${i}: HTTP ${STATUS}"
             if [[ "$STATUS" == "200" ]]; then
-              echo "Deployment healthy"
+              echo "Gateway healthy"
               exit 0
             fi
             sleep 15
           done
-          echo "::error::Deployment health check failed after 5 attempts"
+          echo "::error::Gateway health check failed after 10 attempts"
           exit 1
 
-      - name: Verify response
+      - name: Smoke test products endpoint
         run: |
-          RESP=$(curl -sf "${{ steps.target.outputs.host }}/")
-          echo "$RESP" | jq .
-          NAME=$(echo "$RESP" | jq -r '.name')
-          ENV=$(echo "$RESP" | jq -r '.environment')
-          echo "Deployed: name=${NAME}, environment=${ENV}"
+          curl -fsS "${{ steps.target.outputs.host }}/api/catalog/products" \
+            | head -c 500

@@ -19,3 +19,39 @@ resource "vault_kv_secret_v2" "app_config" {
     db_name     = var.db_name
   })
 }
+
+# ─── Web shop bootstrap secrets ──────────────────────────────────────────
+# Generated once per environment and surfaced to the cluster via VSO.
+# Both shop services and the in-cluster Postgres StatefulSet read these
+# from the same `shop-db` / `shop-jwt` k8s Secrets — single source of truth.
+
+resource "random_password" "shop_jwt_signing_key" {
+  length  = 64
+  special = false
+}
+
+resource "random_password" "shop_db_password" {
+  length  = 32
+  special = false
+}
+
+resource "vault_kv_secret_v2" "shop_jwt" {
+  namespace = vault_namespace.env.path_fq
+  mount     = vault_mount.kv.path
+  name      = "netlix/jwt"
+
+  data_json = jsonencode({
+    signing_key = random_password.shop_jwt_signing_key.result
+  })
+}
+
+resource "vault_kv_secret_v2" "shop_db" {
+  namespace = vault_namespace.env.path_fq
+  mount     = vault_mount.kv.path
+  name      = "netlix/db"
+
+  data_json = jsonencode({
+    username = "netlix"
+    password = random_password.shop_db_password.result
+  })
+}

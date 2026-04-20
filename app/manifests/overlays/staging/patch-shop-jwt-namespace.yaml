@@ -1,8 +1,7 @@
 apiVersion: secrets.hashicorp.com/v1beta1
-kind: VaultPKISecret
+kind: VaultStaticSecret
 metadata:
-  name: web-tls
+  name: shop-jwt
   namespace: consul
 spec:
   namespace: staging
-  commonName: app.staging.netlix.dev

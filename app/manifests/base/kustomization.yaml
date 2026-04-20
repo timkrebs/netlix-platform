@@ -1,19 +1,11 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+# Shared cluster scaffolding. The actual app (the netlix shop) lives
+# under ../shop and is included by each environment overlay.
 resources:
   - namespace.yaml
-  - ../web/deployment.yaml
-  - ../web/pdb.yaml
-  - ../web/hpa.yaml
-  - ../api/deployment.yaml
-  - ../api/pdb.yaml
-  - ../api/hpa.yaml
-  # Consul service mesh — uncomment when Consul is deployed
-  # - ../mesh/proxy-defaults.yaml
-  # - ../mesh/intentions.yaml
   - resource-quota.yaml
   - vault-sa.yaml
   - vault-auth.yaml
-  - vault-pki-secret.yaml
   - network-policies.yaml

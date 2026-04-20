@@ -1,0 +1,13 @@
+# Static DB connection details (host/port/name) shared by all shop services.
+# DB_USER/DB_PASSWORD come from the shop-db Secret (VSO-managed).
+# Postgres runs in-cluster; intra-cluster traffic is plain TCP.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shop-db-config
+  namespace: consul
+data:
+  DB_HOST: "netlix-postgres.consul.svc.cluster.local"
+  DB_PORT: "5432"
+  DB_NAME: "netlix"
+  DB_SSLMODE: "disable"
