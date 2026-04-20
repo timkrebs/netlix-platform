@@ -79,8 +79,21 @@ variable "admin_entity_id" {
   default     = ""
 }
 
-variable "dev_user_entity_id" {
-  description = "Vault identity entity ID of the dev-scoped userpass user (output from vault-cluster). Granted full access only when var.environment == \"dev\"; ignored elsewhere."
+# ─── Per-env userpass user ───────────────────────────────────────────────
+# Mounts a userpass auth backend INSIDE this env's Vault namespace and
+# creates this user with the namespace-admin policy. Login goes directly
+# to the env namespace — no group plumbing needed.
+# Both vars must be non-empty for the resources to be created.
+
+variable "dev_user" {
+  description = "Username for the per-env userpass login (created inside this Vault namespace)."
   type        = string
+  default     = ""
+}
+
+variable "dev_password" {
+  description = "Password for the per-env userpass login."
+  type        = string
+  sensitive   = true
   default     = ""
 }

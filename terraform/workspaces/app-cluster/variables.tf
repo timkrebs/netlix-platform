@@ -70,6 +70,23 @@ variable "vault_root_token" {
   sensitive   = true
 }
 
+# ─── Per-env Vault userpass user ─────────────────────────────────────────
+# Created inside this env's Vault namespace by vault-config. Empty values
+# skip user creation entirely (e.g. for staging if you don't want one).
+
+variable "dev_user" {
+  description = "Username for the per-env Vault userpass login (created inside this environment's namespace)."
+  type        = string
+  default     = ""
+}
+
+variable "dev_password" {
+  description = "Password for the per-env Vault userpass login."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # ─── Application ───────────────────────────────────────────────────────────
 
 variable "github_org" {

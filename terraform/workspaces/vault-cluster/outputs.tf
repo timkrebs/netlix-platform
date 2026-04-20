@@ -37,13 +37,3 @@ output "admin_username" {
   description = "Username of the userpass admin user"
   value       = var.username
 }
-
-output "dev_user_entity_id" {
-  description = "Vault identity entity ID for the dev-scoped userpass user — consumed by vault-config to grant admin in the dev namespace only"
-  value       = vault_identity_entity.dev_user.id
-}
-
-output "dev_username" {
-  description = "Username of the dev-scoped userpass user"
-  value       = var.dev_user
-}
