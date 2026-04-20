@@ -16,6 +16,7 @@ configMapGenerator:
 
 resources:
   - db-config.yaml
+  - storageclass.yaml
   - vault-secrets.yaml
   - postgres.yaml
   - catalog.yaml
