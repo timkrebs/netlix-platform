@@ -95,6 +95,11 @@ resource "vault_identity_entity" "admin" {
   policies = [vault_policy.admin.name]
 }
 
+import {
+  to = vault_identity_entity_alias.admin_userpass
+  id = "f9cd1506-a22e-3ca0-d166-a7bde7df6eb9"
+}
+
 resource "vault_identity_entity_alias" "admin_userpass" {
   name           = var.username
   mount_accessor = vault_auth_backend.userpass.accessor
