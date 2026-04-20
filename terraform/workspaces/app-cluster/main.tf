@@ -74,6 +74,12 @@ module "vault_config" {
   admin_entity_id         = local.admin_entity_id
   dev_user                = var.dev_user
   dev_password            = var.dev_password
+
+  # Cross-cluster Kubernetes auth — Vault calls THIS cluster's API for
+  # TokenReview using the delegated reviewer SA from vault-token-reviewer.tf.
+  kubernetes_host    = local.app_cluster_host
+  kubernetes_ca_cert = local.app_cluster_ca
+  token_reviewer_jwt = local.token_reviewer_jwt
 }
 
 # ─── Vault Secrets Operator (delivers secrets to app pods) ────────────────

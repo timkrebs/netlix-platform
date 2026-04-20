@@ -79,6 +79,28 @@ variable "admin_entity_id" {
   default     = ""
 }
 
+# ─── Cross-cluster Kubernetes auth ───────────────────────────────────────
+# Vault runs in vault-cluster but VSO runs in app-cluster, so Vault must
+# call app-cluster's API for TokenReview. These three values come from
+# the calling app-cluster workspace (EKS module outputs + a SA with
+# system:auth-delegator created there).
+
+variable "kubernetes_host" {
+  description = "API endpoint of the Kubernetes cluster Vault should call for TokenReview (app-cluster EKS endpoint)."
+  type        = string
+}
+
+variable "kubernetes_ca_cert" {
+  description = "PEM-encoded CA certificate for kubernetes_host."
+  type        = string
+}
+
+variable "token_reviewer_jwt" {
+  description = "Long-lived service-account JWT from the app-cluster bound to a SA with system:auth-delegator. Used by Vault to call TokenReview."
+  type        = string
+  sensitive   = true
+}
+
 # ─── Per-env userpass user ───────────────────────────────────────────────
 # Mounts a userpass auth backend INSIDE this env's Vault namespace and
 # creates this user with the namespace-admin policy. Login goes directly
