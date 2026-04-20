@@ -28,6 +28,11 @@ resource "vault_kubernetes_auth_backend_role" "vso" {
   bound_service_account_namespaces = ["vault-secrets-operator-system", "consul"]
   token_policies                   = [vault_policy.vso.name]
   token_ttl                        = 3600
+  # VSO signs SA tokens with audience "vault" by default. Setting the
+  # audience here makes Vault pass audiences=["vault"] in its
+  # TokenReview call — without this, K8s validates against the API
+  # server's default audience and rejects the token.
+  audience = "vault"
 }
 
 # ─── Userpass auth for admin access (shared in admin namespace) ──────────
@@ -205,4 +210,5 @@ resource "vault_kubernetes_auth_backend_role" "app" {
   bound_service_account_namespaces = ["netlix"]
   token_policies                   = [vault_policy.app.name]
   token_ttl                        = 3600
+  audience                         = "vault"
 }
