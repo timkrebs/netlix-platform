@@ -72,6 +72,7 @@ module "vault_config" {
   create_shared_resources = var.environment == "dev"
   tfc_organization_name   = var.tfc_organization
   admin_entity_id         = local.admin_entity_id
+  dev_user_entity_id      = local.dev_user_entity_id
 }
 
 # ─── Vault Secrets Operator (delivers secrets to app pods) ────────────────

@@ -114,3 +114,16 @@ variable "password" {
   type        = string
   sensitive   = true
 }
+
+# ─── Userpass dev user (scoped to the dev namespace) ─────────────────────
+
+variable "dev_user" {
+  description = "Username for the Vault userpass dev login. Granted full access to the dev namespace only — no root or staging access."
+  type        = string
+}
+
+variable "dev_password" {
+  description = "Password for the Vault userpass dev login"
+  type        = string
+  sensitive   = true
+}

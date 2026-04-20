@@ -27,5 +27,6 @@ locals {
   # Identity entity ID used to grant the userpass admin access in this
   # environment's Vault namespace. Falls back to "" if vault-cluster
   # hasn't yet been re-applied with the entity resource.
-  admin_entity_id = try(data.tfe_outputs.vault_cluster.values.admin_entity_id, "")
+  admin_entity_id    = try(data.tfe_outputs.vault_cluster.values.admin_entity_id, "")
+  dev_user_entity_id = try(data.tfe_outputs.vault_cluster.values.dev_user_entity_id, "")
 }

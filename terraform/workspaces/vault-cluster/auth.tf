@@ -105,3 +105,28 @@ resource "vault_identity_entity_alias" "admin_userpass" {
   mount_accessor = vault_auth_backend.userpass.accessor
   canonical_id   = vault_identity_entity.admin.id
 }
+
+# ─── Userpass dev user (scoped to the dev namespace) ─────────────────────
+# Same userpass auth backend, different identity. The user has no real
+# capabilities in root — full access in `dev` is granted by vault-config
+# (when environment == "dev") via the namespace-admins identity group.
+
+resource "vault_generic_endpoint" "dev_user" {
+  path                 = "auth/${vault_auth_backend.userpass.path}/users/${var.dev_user}"
+  ignore_absent_fields = true
+
+  data_json = jsonencode({
+    password = var.dev_password
+    policies = ["default"]
+  })
+}
+
+resource "vault_identity_entity" "dev_user" {
+  name = var.dev_user
+}
+
+resource "vault_identity_entity_alias" "dev_user_userpass" {
+  name           = var.dev_user
+  mount_accessor = vault_auth_backend.userpass.accessor
+  canonical_id   = vault_identity_entity.dev_user.id
+}

@@ -78,3 +78,9 @@ variable "admin_entity_id" {
   type        = string
   default     = ""
 }
+
+variable "dev_user_entity_id" {
+  description = "Vault identity entity ID of the dev-scoped userpass user (output from vault-cluster). Granted full access only when var.environment == \"dev\"; ignored elsewhere."
+  type        = string
+  default     = ""
+}
