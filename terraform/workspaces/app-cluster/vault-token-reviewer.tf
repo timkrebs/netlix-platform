@@ -14,21 +14,13 @@
 # The JWT is then passed to vault-config via the token_reviewer_jwt
 # input, and Vault uses it to authenticate every TokenReview call.
 
-resource "kubernetes_namespace" "vso_namespace" {
-  metadata {
-    name = "vault-secrets-operator-system"
-  }
-
-  lifecycle {
-    # VSO Helm chart may also declare this namespace — don't fight it.
-    ignore_changes = [metadata]
-  }
-}
+# Namespace is owned by the VSO Helm release (see ../../components/vso),
+# so we don't manage it here — just reference it by name.
 
 resource "kubernetes_service_account" "vault_token_reviewer" {
   metadata {
     name      = "vault-token-reviewer"
-    namespace = kubernetes_namespace.vso_namespace.metadata[0].name
+    namespace = "vault-secrets-operator-system"
   }
 }
 
