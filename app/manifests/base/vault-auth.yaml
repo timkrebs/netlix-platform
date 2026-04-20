@@ -11,8 +11,11 @@ spec:
     role: netlix-vso
     serviceAccount: vault-secrets-operator-controller-manager
     tokenExpirationSeconds: 600
-    # Must match audience on the Vault role (vault-config kubernetes
-    # auth backend role). Without this, VSO uses the API-server default
-    # audience and Vault rejects the JWT as "invalid audience".
+    # Two audiences are required:
+    #   - "vault": matches the Vault role's audience check on the JWT claim
+    #   - "https://kubernetes.default.svc": EKS's API-server default
+    #     audience, needed because Vault calls TokenReview without an
+    #     explicit audience — K8s then validates against its default.
     audiences:
       - vault
+      - https://kubernetes.default.svc
