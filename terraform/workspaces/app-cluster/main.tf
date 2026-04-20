@@ -22,6 +22,10 @@ module "eks" {
   project                              = var.project
   cluster_endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
   additional_admin_arns                = [data.aws_iam_session_context.current.issuer_arn]
+  # Allow vault-cluster pods (same VPC) to reach this cluster's API on
+  # 443 over the private endpoint — required for cross-cluster Vault
+  # TokenReview from VSO.
+  cluster_api_extra_ingress_cidrs = [local.vpc_cidr_block]
 }
 
 # ─── AWS Load Balancer Controller ─────────────────────────────────────────

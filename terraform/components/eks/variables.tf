@@ -44,6 +44,12 @@ variable "cluster_endpoint_public_access_cidrs" {
   default     = []
 }
 
+variable "cluster_api_extra_ingress_cidrs" {
+  description = "Additional CIDRs allowed to reach the cluster API (port 443) on the cluster security group. Use to allow other workloads in the same VPC (e.g. cross-cluster Vault TokenReview from vault-cluster). null = no extra rule."
+  type        = list(string)
+  default     = null
+}
+
 variable "additional_admin_arns" {
   description = "Additional IAM role/user ARNs to grant EKS cluster admin access"
   type        = list(string)

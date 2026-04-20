@@ -11,6 +11,21 @@ module "eks" {
   cluster_endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
   cluster_endpoint_private_access      = true
 
+  # Allow other workloads in the same VPC to reach this cluster's API on
+  # 443 over the private endpoint. Required for cross-cluster Vault
+  # TokenReview (vault-cluster pods → app-cluster API). Default behavior
+  # only allows the cluster's own nodes.
+  cluster_security_group_additional_rules = var.cluster_api_extra_ingress_cidrs == null ? {} : {
+    in_vpc_api_access = {
+      description = "Allow other VPC workloads to reach the cluster API"
+      protocol    = "tcp"
+      from_port   = 443
+      to_port     = 443
+      type        = "ingress"
+      cidr_blocks = var.cluster_api_extra_ingress_cidrs
+    }
+  }
+
   cluster_encryption_config = {
     provider_key_arn = aws_kms_key.eks.arn
     resources        = ["secrets"]

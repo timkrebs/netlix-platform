@@ -15,6 +15,7 @@ data "tfe_outputs" "vault_cluster" {
 locals {
   # Network outputs
   vpc_id                            = data.tfe_outputs.network.values.vpc_id
+  vpc_cidr_block                    = data.tfe_outputs.network.values.vpc_cidr_block
   private_subnet_ids                = data.tfe_outputs.network.values.private_subnet_ids
   certificate_arn                   = data.tfe_outputs.network.values.certificate_arn
   zone_id                           = data.tfe_outputs.network.values.zone_id
