@@ -2,38 +2,38 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - ../../base
-  - ../../shop
+- ../../base
+- ../../shop
 
 # Image tags. Each shop service is published from .github/workflows/cd.yaml
 # under ghcr.io/timkrebs/netlix-platform/<service>:dev-<sha>. The tag
 # below is rewritten by the CD pipeline on every push to dev.
 images:
-  - name: netlix-catalog
-    newName: ghcr.io/timkrebs/netlix-platform/catalog
-    newTag: dev-latest
-  - name: netlix-auth
-    newName: ghcr.io/timkrebs/netlix-platform/auth
-    newTag: dev-latest
-  - name: netlix-orders
-    newName: ghcr.io/timkrebs/netlix-platform/orders
-    newTag: dev-latest
-  - name: netlix-gateway
-    newName: ghcr.io/timkrebs/netlix-platform/gateway
-    newTag: dev-latest
+- name: netlix-auth
+  newName: ghcr.io/timkrebs/netlix-platform/auth
+  newTag: dev-34229a4f0ef47de29747f7172ced8568da8f6703
+- name: netlix-catalog
+  newName: ghcr.io/timkrebs/netlix-platform/catalog
+  newTag: dev-34229a4f0ef47de29747f7172ced8568da8f6703
+- name: netlix-gateway
+  newName: ghcr.io/timkrebs/netlix-platform/gateway
+  newTag: dev-34229a4f0ef47de29747f7172ced8568da8f6703
+- name: netlix-orders
+  newName: ghcr.io/timkrebs/netlix-platform/orders
+  newTag: dev-34229a4f0ef47de29747f7172ced8568da8f6703
 
 # Patch the Vault-namespace fields on the shop's VSO resources to point
 # at the per-environment Vault namespace (default in base is `admin`).
 patches:
-  - path: patch-vault-auth.yaml
-    target:
-      kind: VaultAuth
-      name: default
-  - path: patch-shop-db-namespace.yaml
-    target:
-      kind: VaultStaticSecret
-      name: shop-db
-  - path: patch-shop-jwt-namespace.yaml
-    target:
-      kind: VaultStaticSecret
-      name: shop-jwt
+- path: patch-vault-auth.yaml
+  target:
+    kind: VaultAuth
+    name: default
+- path: patch-shop-db-namespace.yaml
+  target:
+    kind: VaultStaticSecret
+    name: shop-db
+- path: patch-shop-jwt-namespace.yaml
+  target:
+    kind: VaultStaticSecret
+    name: shop-jwt
