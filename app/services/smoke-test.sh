@@ -10,7 +10,7 @@ set -euo pipefail
 
 GATEWAY="${GATEWAY:-http://localhost:8080}"
 EMAIL="smoke-$(date +%s)@netlix.dev"
-PASSWORD="smoketestpass123"
+PASSWORD="SmokeTest12!Pass"
 
 red()   { printf '\033[31m%s\033[0m\n' "$*"; }
 green() { printf '\033[32m%s\033[0m\n' "$*"; }
@@ -95,6 +95,27 @@ ORDERS=$(curl -fsS "$GATEWAY/api/orders/orders" -H "Authorization: Bearer $TOKEN
 N=$(echo "$ORDERS" | jq 'length')
 if [[ "$N" -lt 1 ]]; then red "expected ≥1 order, got $N"; exit 1; fi
 green "user has $N order(s)"
+
+step "GET /me returns the user profile"
+ME=$(curl -fsS "$GATEWAY/api/auth/me" -H "Authorization: Bearer $TOKEN")
+ME_EMAIL=$(echo "$ME" | jq -r '.email')
+if [[ "$ME_EMAIL" != "$EMAIL" ]]; then red "wrong /me email: $ME_EMAIL"; exit 1; fi
+green "/me returns $ME_EMAIL"
+
+step "weak password rejected on signup"
+HTTP=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$GATEWAY/api/auth/signup" \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"weak-'$(date +%s)'@netlix.dev","password":"weakpass"}')
+if [[ "$HTTP" != "400" ]]; then red "expected 400 on weak password, got $HTTP"; exit 1; fi
+green "weak password rejected (400)"
+
+step "logout revokes token"
+curl -fsS -X POST "$GATEWAY/api/auth/logout" -H "Authorization: Bearer $TOKEN" >/dev/null
+HTTP=$(curl -s -o /dev/null -w '%{http_code}' "$GATEWAY/api/auth/me" -H "Authorization: Bearer $TOKEN")
+if [[ "$HTTP" != "401" ]]; then red "expected 401 on revoked token, got $HTTP"; exit 1; fi
+HTTP=$(curl -s -o /dev/null -w '%{http_code}' "$GATEWAY/api/orders/orders" -H "Authorization: Bearer $TOKEN")
+if [[ "$HTTP" != "401" ]]; then red "expected 401 on orders with revoked token, got $HTTP"; exit 1; fi
+green "revoked token rejected by both auth and orders"
 
 step "fetch SPA index"
 HTML=$(curl -fsS "$GATEWAY/")

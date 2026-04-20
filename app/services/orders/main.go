@@ -90,9 +90,19 @@ func (s *server) requireAuth(next http.Handler) http.Handler {
 			return
 		}
 		raw := strings.TrimPrefix(auth, "Bearer ")
-		uid, err := s.parseToken(raw)
+		uid, jti, err := s.parseToken(raw)
 		if err != nil {
 			writeErr(w, http.StatusUnauthorized, "invalid token")
+			return
+		}
+		revoked, err := s.isTokenRevoked(r.Context(), jti)
+		if err != nil {
+			log.Printf("orders: revocation check: %v", err)
+			writeErr(w, http.StatusInternalServerError, "auth check failed")
+			return
+		}
+		if revoked {
+			writeErr(w, http.StatusUnauthorized, "token has been revoked")
 			return
 		}
 		ctx := context.WithValue(r.Context(), userIDKey, uid)
@@ -100,7 +110,7 @@ func (s *server) requireAuth(next http.Handler) http.Handler {
 	})
 }
 
-func (s *server) parseToken(raw string) (int64, error) {
+func (s *server) parseToken(raw string) (int64, string, error) {
 	t, err := jwt.Parse(raw, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method")
@@ -108,17 +118,32 @@ func (s *server) parseToken(raw string) (int64, error) {
 		return s.jwtSecret, nil
 	})
 	if err != nil || !t.Valid {
-		return 0, fmt.Errorf("invalid token")
+		return 0, "", fmt.Errorf("invalid token")
 	}
 	claims, ok := t.Claims.(jwt.MapClaims)
 	if !ok {
-		return 0, fmt.Errorf("invalid claims")
+		return 0, "", fmt.Errorf("invalid claims")
 	}
 	sub, ok := claims["sub"].(float64)
 	if !ok {
-		return 0, fmt.Errorf("invalid sub claim")
+		return 0, "", fmt.Errorf("invalid sub claim")
 	}
-	return int64(sub), nil
+	jti, _ := claims["jti"].(string)
+	return int64(sub), jti, nil
+}
+
+// isTokenRevoked checks the shared revoked_tokens table. Auth-issued
+// tokens older than this service's deploy may not have a jti (legacy);
+// in that case we fall back to accepting them — fixed by the next
+// login cycle.
+func (s *server) isTokenRevoked(ctx context.Context, jti string) (bool, error) {
+	if jti == "" {
+		return false, nil
+	}
+	var exists bool
+	err := s.db.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM revoked_tokens WHERE jti = $1)`, jti).Scan(&exists)
+	return exists, err
 }
 
 func (s *server) createOrder(w http.ResponseWriter, r *http.Request) {

@@ -3,68 +3,94 @@ package main
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
-	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
-	"strings"
+	"os/signal"
+	"strconv"
+	"syscall"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	_ "github.com/lib/pq"
-	"golang.org/x/crypto/bcrypt"
 )
 
-type credentials struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+// Service-wide configuration, sourced from env vars. Values come from
+// k8s env (in prod) or docker-compose (locally).
+type config struct {
+	listenAddr         string
+	jwtSecret          []byte
+	accessTTL          time.Duration
+	maxFailedAttempts  int
+	lockoutDuration    time.Duration
+	revocationReaperOn bool
 }
 
-type tokenResponse struct {
-	Token  string `json:"token"`
-	UserID int64  `json:"user_id"`
-	Email  string `json:"email"`
-}
-
+// server bundles request-scoped dependencies — the DB handle, JWT
+// signer, structured logger, and config knobs. Handlers hang off this
+// struct so they're trivially unit-testable with a mock DB + secret.
 type server struct {
-	db        *sql.DB
-	jwtSecret []byte
-	jwtTTL    time.Duration
+	db     *sql.DB
+	cfg    config
+	logger *slog.Logger
 }
 
 func main() {
-	secret := os.Getenv("JWT_SIGNING_KEY")
-	if secret == "" {
-		log.Fatal("auth: JWT_SIGNING_KEY is required")
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	slog.SetDefault(logger)
+
+	cfg, err := loadConfig()
+	if err != nil {
+		logger.Error("config", "err", err)
+		os.Exit(1)
 	}
 
 	db, err := openDB(buildDSN())
 	if err != nil {
-		log.Fatalf("auth: db open: %v", err)
+		logger.Error("db open", "err", err)
+		os.Exit(1)
 	}
 	defer db.Close()
 
-	srv := &server{
-		db:        db,
-		jwtSecret: []byte(secret),
-		jwtTTL:    24 * time.Hour,
-	}
+	srv := &server{db: db, cfg: cfg, logger: logger}
 
 	mux := http.NewServeMux()
 	srv.routes(mux)
 
-	addr := envDefault("LISTEN_ADDR", "0.0.0.0:8080")
+	handler := chain(mux,
+		recoverMiddleware(logger),
+		requestIDMiddleware,
+		loggingMiddleware(logger),
+		securityHeadersMiddleware,
+	)
+
 	httpSrv := &http.Server{
-		Addr:         addr,
-		Handler:      mux,
+		Addr:         cfg.listenAddr,
+		Handler:      handler,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  30 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
-	log.Printf("auth: listening on %s", addr)
-	log.Fatal(httpSrv.ListenAndServe())
+	if cfg.revocationReaperOn {
+		go srv.revocationReaper(context.Background())
+	}
+
+	go func() {
+		logger.Info("listening", "addr", cfg.listenAddr, "access_ttl", cfg.accessTTL.String())
+		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Error("server failed", "err", err)
+			os.Exit(1)
+		}
+	}()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	<-stop
+	logger.Info("shutting down")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_ = httpSrv.Shutdown(ctx)
 }
 
 func (s *server) routes(mux *http.ServeMux) {
@@ -72,95 +98,24 @@ func (s *server) routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /ready", s.ready)
 	mux.HandleFunc("POST /signup", s.signup)
 	mux.HandleFunc("POST /login", s.login)
+	mux.Handle("POST /logout", s.requireAuth(http.HandlerFunc(s.logout)))
+	mux.Handle("GET /me", s.requireAuth(http.HandlerFunc(s.me)))
 }
 
-func (s *server) signup(w http.ResponseWriter, r *http.Request) {
-	var c credentials
-	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
-		writeErr(w, http.StatusBadRequest, "invalid body")
-		return
-	}
-	c.Email = strings.TrimSpace(strings.ToLower(c.Email))
-	if c.Email == "" || len(c.Password) < 8 {
-		writeErr(w, http.StatusBadRequest, "email required and password must be 8+ chars")
-		return
+func loadConfig() (config, error) {
+	secret := os.Getenv("JWT_SIGNING_KEY")
+	if secret == "" {
+		return config{}, errMissingEnv("JWT_SIGNING_KEY")
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(c.Password), bcrypt.DefaultCost)
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, "hash failed")
-		return
-	}
-
-	var id int64
-	err = s.db.QueryRowContext(r.Context(),
-		`INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id`,
-		c.Email, string(hash)).Scan(&id)
-	if err != nil {
-		if isUniqueViolation(err) {
-			writeErr(w, http.StatusConflict, "email already registered")
-			return
-		}
-		writeErr(w, http.StatusInternalServerError, "insert failed")
-		log.Printf("auth: signup insert: %v", err)
-		return
-	}
-
-	tok, err := s.issueToken(id, c.Email)
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, "token issue failed")
-		return
-	}
-	writeJSON(w, http.StatusCreated, tokenResponse{Token: tok, UserID: id, Email: c.Email})
-}
-
-func (s *server) login(w http.ResponseWriter, r *http.Request) {
-	var c credentials
-	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
-		writeErr(w, http.StatusBadRequest, "invalid body")
-		return
-	}
-	c.Email = strings.TrimSpace(strings.ToLower(c.Email))
-
-	var (
-		id   int64
-		hash string
-	)
-	err := s.db.QueryRowContext(r.Context(),
-		`SELECT id, password_hash FROM users WHERE email = $1`, c.Email).
-		Scan(&id, &hash)
-	if errors.Is(err, sql.ErrNoRows) {
-		writeErr(w, http.StatusUnauthorized, "invalid credentials")
-		return
-	}
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, "query failed")
-		return
-	}
-
-	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(c.Password)); err != nil {
-		writeErr(w, http.StatusUnauthorized, "invalid credentials")
-		return
-	}
-
-	tok, err := s.issueToken(id, c.Email)
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, "token issue failed")
-		return
-	}
-	writeJSON(w, http.StatusOK, tokenResponse{Token: tok, UserID: id, Email: c.Email})
-}
-
-func (s *server) issueToken(userID int64, email string) (string, error) {
-	claims := jwt.MapClaims{
-		"sub":   userID,
-		"email": email,
-		"iat":   time.Now().Unix(),
-		"exp":   time.Now().Add(s.jwtTTL).Unix(),
-		"iss":   "netlix-auth",
-	}
-	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return t.SignedString(s.jwtSecret)
+	return config{
+		listenAddr:         envDefault("LISTEN_ADDR", "0.0.0.0:8080"),
+		jwtSecret:          []byte(secret),
+		accessTTL:          durationEnv("ACCESS_TOKEN_TTL", 2*time.Hour),
+		maxFailedAttempts:  intEnv("MAX_FAILED_ATTEMPTS", 5),
+		lockoutDuration:    durationEnv("LOCKOUT_DURATION", 15*time.Minute),
+		revocationReaperOn: envDefault("REVOCATION_REAPER", "true") == "true",
+	}, nil
 }
 
 func health(w http.ResponseWriter, _ *http.Request) {
@@ -171,10 +126,33 @@ func (s *server) ready(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	defer cancel()
 	if err := s.db.PingContext(ctx); err != nil {
-		writeErr(w, http.StatusServiceUnavailable, "db unreachable")
+		writeError(w, http.StatusServiceUnavailable, "db_unreachable", "db unreachable")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
+}
+
+// revocationReaper periodically purges revoked_tokens rows whose
+// expires_at is already in the past — once the JWT would have expired
+// anyway, tracking it is pointless.
+func (s *server) revocationReaper(ctx context.Context) {
+	t := time.NewTicker(15 * time.Minute)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			res, err := s.db.ExecContext(ctx, `DELETE FROM revoked_tokens WHERE expires_at < NOW()`)
+			if err != nil {
+				s.logger.Warn("revocation reaper", "err", err)
+				continue
+			}
+			if n, _ := res.RowsAffected(); n > 0 {
+				s.logger.Info("revocation reaper purged", "rows", n)
+			}
+		}
+	}
 }
 
 func openDB(dsn string) (*sql.DB, error) {
@@ -207,18 +185,25 @@ func envDefault(k, d string) string {
 	return d
 }
 
-// isUniqueViolation reports whether err is a Postgres unique-constraint
-// violation (SQLSTATE 23505). Avoids importing pgx just for the error code.
-func isUniqueViolation(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "duplicate key value")
+func intEnv(k string, d int) int {
+	if v := os.Getenv(k); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
+	}
+	return d
 }
 
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
+func durationEnv(k string, d time.Duration) time.Duration {
+	if v := os.Getenv(k); v != "" {
+		if parsed, err := time.ParseDuration(v); err == nil {
+			return parsed
+		}
+	}
+	return d
 }
 
-func writeErr(w http.ResponseWriter, status int, msg string) {
-	writeJSON(w, status, map[string]string{"error": msg})
-}
+type envErr struct{ key string }
+
+func (e envErr) Error() string  { return "missing required env: " + e.key }
+func errMissingEnv(k string) error { return envErr{k} }

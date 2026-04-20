@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { api, getUser, setSession, clearSession } from './api.js';
+import { api, getUser, setSession, clearSession, onSessionExpired } from './api.js';
 
 function fmtPrice(cents) {
   return `$${(cents / 100).toFixed(2)}`;
@@ -8,12 +8,32 @@ function fmtPrice(cents) {
 export default function App() {
   const [user, setUser] = useState(getUser());
   const [view, setView] = useState('shop');
+  const [bootstrapping, setBootstrapping] = useState(!!getUser());
 
-  function logout() {
+  // Validate any persisted session against the server on mount. If the
+  // token has expired, was revoked, or the user no longer exists, /me
+  // 401s and our global handler clears localStorage — we then surface
+  // the login screen instead of a stale "logged-in" UI.
+  useEffect(() => {
+    if (!user) return;
+    api.me()
+      .then((p) => setUser({ id: p.id, email: p.email }))
+      .catch(() => setUser(null))
+      .finally(() => setBootstrapping(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Global session-lost listener — fired by any 401 returned by the
+  // API client (e.g. token expired mid-session).
+  useEffect(() => onSessionExpired(() => setUser(null)), []);
+
+  async function logout() {
+    try { await api.logout(); } catch { /* fire-and-forget */ }
     clearSession();
     setUser(null);
     setView('shop');
   }
+
+  if (bootstrapping) return <div className="app"><p className="loading">Loading…</p></div>;
 
   return (
     <div className="app">
@@ -61,7 +81,6 @@ function Shop({ user }) {
   function addToCart(p) {
     setCart((c) => ({ ...c, [p.id]: (c[p.id] || 0) + 1 }));
   }
-
   function changeQty(pid, delta) {
     setCart((c) => {
       const next = { ...c };
@@ -152,10 +171,12 @@ function Login({ onAuth }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   async function submit(e) {
     e.preventDefault();
     setError('');
+    setSubmitting(true);
     try {
       const fn = mode === 'login' ? api.login : api.signup;
       const res = await fn(email, password);
@@ -163,6 +184,8 @@ function Login({ onAuth }) {
       onAuth({ id: res.user_id, email: res.email });
     } catch (err) {
       setError(err.message);
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -171,7 +194,7 @@ function Login({ onAuth }) {
       <h2>{mode === 'login' ? 'Log in' : 'Create account'}</h2>
       <label>
         Email
-        <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
+        <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required autoComplete="email" />
       </label>
       <label>
         Password
@@ -179,15 +202,23 @@ function Login({ onAuth }) {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           type="password"
-          minLength={8}
+          minLength={mode === 'signup' ? 10 : 1}
           required
+          autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
         />
+        {mode === 'signup' && (
+          <small className="hint">
+            10+ chars, at least three of: uppercase, lowercase, digit, symbol
+          </small>
+        )}
       </label>
-      <button type="submit">{mode === 'login' ? 'Log in' : 'Sign up'}</button>
+      <button type="submit" disabled={submitting}>
+        {submitting ? '...' : mode === 'login' ? 'Log in' : 'Sign up'}
+      </button>
       <button
         type="button"
         className="link"
-        onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+        onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); }}
       >
         {mode === 'login' ? 'Need an account? Sign up' : 'Have an account? Log in'}
       </button>

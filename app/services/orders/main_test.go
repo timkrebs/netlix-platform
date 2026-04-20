@@ -25,6 +25,7 @@ func makeToken(t *testing.T, secret []byte, userID int64) string {
 	t.Helper()
 	claims := jwt.MapClaims{
 		"sub": userID,
+		"jti": "test-jti-001",
 		"exp": time.Now().Add(time.Hour).Unix(),
 		"iat": time.Now().Unix(),
 	}
@@ -33,6 +34,14 @@ func makeToken(t *testing.T, secret []byte, userID int64) string {
 		t.Fatalf("sign: %v", err)
 	}
 	return tok
+}
+
+// expectRevocationCheckNotRevoked stubs the SELECT EXISTS lookup that
+// requireAuth performs after parsing the JWT.
+func expectRevocationCheckNotRevoked(mock sqlmock.Sqlmock) {
+	mock.ExpectQuery(`SELECT EXISTS`).
+		WithArgs("test-jti-001").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
 }
 
 func TestRequireAuthRejectsMissingHeader(t *testing.T) {
@@ -70,6 +79,7 @@ func TestCreateOrderHappyPath(t *testing.T) {
 	srv, mock, cleanup := newTestServer(t)
 	defer cleanup()
 
+	expectRevocationCheckNotRevoked(mock)
 	mock.ExpectBegin()
 	mock.ExpectQuery("SELECT price_cents, stock FROM products").
 		WithArgs(int64(1)).
@@ -108,6 +118,7 @@ func TestCreateOrderInsufficientStock(t *testing.T) {
 	srv, mock, cleanup := newTestServer(t)
 	defer cleanup()
 
+	expectRevocationCheckNotRevoked(mock)
 	mock.ExpectBegin()
 	mock.ExpectQuery("SELECT price_cents, stock FROM products").
 		WithArgs(int64(1)).
@@ -127,5 +138,26 @@ func TestCreateOrderInsufficientStock(t *testing.T) {
 
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("status: got %d want 409, body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestRequireAuthRejectsRevokedToken(t *testing.T) {
+	srv, mock, cleanup := newTestServer(t)
+	defer cleanup()
+
+	mock.ExpectQuery(`SELECT EXISTS`).
+		WithArgs("test-jti-001").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+	mux := http.NewServeMux()
+	srv.routes(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/orders", nil)
+	req.Header.Set("Authorization", "Bearer "+makeToken(t, srv.jwtSecret, 7))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status: got %d want 401, body=%s", rec.Code, rec.Body.String())
 	}
 }
