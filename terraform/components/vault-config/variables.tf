@@ -72,3 +72,9 @@ variable "create_shared_resources" {
   type        = bool
   default     = false
 }
+
+variable "admin_entity_id" {
+  description = "Vault identity entity ID of the userpass admin user (output from vault-cluster). When set, this user is granted full access to this environment's Vault namespace."
+  type        = string
+  default     = ""
+}

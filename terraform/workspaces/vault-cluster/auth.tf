@@ -84,3 +84,19 @@ resource "vault_generic_endpoint" "admin_user" {
     policies = [vault_policy.admin.name]
   })
 }
+
+# ─── Identity entity + userpass alias ────────────────────────────────────
+# Creates a single global identity for the admin user. Per-env namespaces
+# (created by vault-config) attach their own admin policy to this entity
+# via vault_identity_group, giving the user admin in every namespace.
+
+resource "vault_identity_entity" "admin" {
+  name     = var.username
+  policies = [vault_policy.admin.name]
+}
+
+resource "vault_identity_entity_alias" "admin_userpass" {
+  name           = var.username
+  mount_accessor = vault_auth_backend.userpass.accessor
+  canonical_id   = vault_identity_entity.admin.id
+}

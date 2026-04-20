@@ -27,3 +27,13 @@ output "vault_ca_cert" {
   description = "Vault CA certificate secret name"
   value       = module.vault_server.vault_ca_cert
 }
+
+output "admin_entity_id" {
+  description = "Vault identity entity ID for the userpass admin user — consumed by vault-config to grant per-namespace admin"
+  value       = vault_identity_entity.admin.id
+}
+
+output "admin_username" {
+  description = "Username of the userpass admin user"
+  value       = var.username
+}

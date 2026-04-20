@@ -24,4 +24,8 @@ locals {
   vault_external_address = data.tfe_outputs.vault_cluster.values.vault_external_address
   vault_namespace        = data.tfe_outputs.vault_cluster.values.vault_namespace
   vault_ca_cert          = data.tfe_outputs.vault_cluster.values.vault_ca_cert
+  # Identity entity ID used to grant the userpass admin access in this
+  # environment's Vault namespace. Falls back to "" if vault-cluster
+  # hasn't yet been re-applied with the entity resource.
+  admin_entity_id = try(data.tfe_outputs.vault_cluster.values.admin_entity_id, "")
 }
