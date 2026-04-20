@@ -2,6 +2,11 @@
 # Bootstrapped here so the Vault cluster ships with a usable admin login
 # right after init. Username/password come from HCP TF workspace variables.
 
+import {
+  to = vault_auth_backend.userpass
+  id = "userpass"
+}
+
 resource "vault_auth_backend" "userpass" {
   type = "userpass"
   path = "userpass"
