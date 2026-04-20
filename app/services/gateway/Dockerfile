@@ -10,7 +10,7 @@ RUN npm install --no-audit --no-fund
 COPY frontend/ ./
 RUN npm run build
 
-FROM golang:1.23-alpine AS go-builder
+FROM golang:1.26-alpine AS go-builder
 WORKDIR /app
 COPY gateway/go.mod gateway/go.sum* ./
 RUN go mod download

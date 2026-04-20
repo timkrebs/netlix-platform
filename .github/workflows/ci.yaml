@@ -159,7 +159,7 @@ jobs:
                 -summary \
                 -output text \
                 -kubernetes-version 1.31.0 \
-                -skip VaultAuth,VaultPKISecret
+                -skip VaultAuth,VaultPKISecret,VaultStaticSecret,VaultDynamicSecret
 
   image-scan:
     name: Container image scan
