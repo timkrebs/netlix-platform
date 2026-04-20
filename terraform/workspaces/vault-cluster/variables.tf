@@ -83,3 +83,34 @@ variable "tfc_organization" {
   type        = string
   default     = "tim-krebs-org"
 }
+
+# ─── Vault provider auth (root namespace) ─────────────────────────────────
+
+variable "vault_address" {
+  description = "Vault external address (e.g. https://vault.dev.netlix.dev)"
+  type        = string
+
+  validation {
+    condition     = can(regex("^https://", var.vault_address))
+    error_message = "vault_address must start with https://."
+  }
+}
+
+variable "vault_root_token" {
+  description = "Vault root token used to bootstrap the userpass auth method"
+  type        = string
+  sensitive   = true
+}
+
+# ─── Userpass admin user ──────────────────────────────────────────────────
+
+variable "username" {
+  description = "Username for the Vault userpass admin login"
+  type        = string
+}
+
+variable "password" {
+  description = "Password for the Vault userpass admin login"
+  type        = string
+  sensitive   = true
+}

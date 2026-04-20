@@ -30,3 +30,10 @@ provider "kubectl" {
   token                  = module.eks.cluster_token
   load_config_file       = false
 }
+
+# Vault provider connects to the Vault cluster's public ALB endpoint.
+provider "vault" {
+  address          = var.vault_address
+  token            = var.vault_root_token
+  skip_child_token = true
+}
