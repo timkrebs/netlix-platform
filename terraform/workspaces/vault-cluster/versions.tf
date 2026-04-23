@@ -13,7 +13,14 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.0"
+      # Pin to 5.90.x — 5.91+ tightened the EKS Auto Mode
+      # validateAutoModeCustsomizeDiff such that the terraform-aws-modules/eks
+      # v20.33.0 module (which doesn't emit compute_config / elastic_load_balancing /
+      # storage_config.block_storage consistently) trips the triad check. The
+      # proper upstream fix is in EKS module v21.3.2+, which forces AWS provider
+      # v6.x and breaks IRSA/OIDC — out of scope for a hotfix. Bump this when
+      # we upgrade the EKS module.
+      version = "~> 5.90.0"
     }
     helm = {
       source  = "hashicorp/helm"

@@ -13,7 +13,11 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.0"
+      # Pin to 5.90.x — see vault-cluster/versions.tf for the full rationale.
+      # Keeps AWS provider behavior consistent with the terraform-aws-modules/eks
+      # v20.33.0 module; later 5.x releases enforce an EKS Auto Mode triad check
+      # that's only resolved cleanly in EKS module v21.x (AWS provider v6.x).
+      version = "~> 5.90.0"
     }
     helm = {
       source  = "hashicorp/helm"
