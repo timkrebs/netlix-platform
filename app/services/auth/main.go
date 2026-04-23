@@ -55,12 +55,14 @@ func main() {
 
 	mux := http.NewServeMux()
 	srv.routes(mux)
+	mux.Handle("/metrics", metricsHandler())
 
 	handler := chain(mux,
 		recoverMiddleware(logger),
 		requestIDMiddleware,
 		loggingMiddleware(logger),
 		securityHeadersMiddleware,
+		metricsMiddleware,
 	)
 
 	httpSrv := &http.Server{

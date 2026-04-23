@@ -110,3 +110,19 @@ module "monitoring" {
   eks_cluster_name       = module.eks.cluster_name
   alert_email            = var.alert_email
 }
+
+# ─── In-cluster Observability (Prometheus + Grafana + Loki) ───────────────
+
+module "observability" {
+  source = "../../components/observability"
+
+  environment     = var.environment
+  domain          = var.base_domain
+  certificate_arn = local.certificate_arn
+  vault_namespace = "vault"
+
+  # VSO must be deployed first so the VaultStaticSecret CRD exists and the
+  # default VaultConnection/VaultAuth is ready to sync the Grafana admin
+  # secret. vault_config must exist so `secret/netlix/grafana` is populated.
+  depends_on = [module.vso, module.vault_config]
+}

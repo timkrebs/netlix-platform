@@ -61,11 +61,12 @@ func main() {
 
 	mux := http.NewServeMux()
 	srv.routes(mux)
+	mux.Handle("/metrics", metricsHandler())
 
 	addr := envDefault("LISTEN_ADDR", "0.0.0.0:8080")
 	httpSrv := &http.Server{
 		Addr:         addr,
-		Handler:      mux,
+		Handler:      metricsMiddleware(mux),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  30 * time.Second,

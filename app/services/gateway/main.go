@@ -35,11 +35,12 @@ func main() {
 	// /api/orders/* → orders service
 	mux.Handle("/api/orders/", proxy(ordersURL, "/api/orders"))
 
+	mux.Handle("/metrics", metricsHandler())
 	mux.Handle("/", spaHandler(staticDir))
 
 	srv := &http.Server{
 		Addr:         addr,
-		Handler:      logRequests(mux),
+		Handler:      metricsMiddleware(logRequests(mux)),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,

@@ -55,3 +55,24 @@ resource "vault_kv_secret_v2" "shop_db" {
     password = random_password.shop_db_password.result
   })
 }
+
+# ─── Grafana admin credentials ──────────────────────────────────────────
+# Synced into the observability namespace by VSO (VaultStaticSecret in
+# components/observability). Read by the kube-prometheus-stack chart's
+# Grafana via grafana.admin.existingSecret.
+
+resource "random_password" "grafana_admin" {
+  length  = 32
+  special = false
+}
+
+resource "vault_kv_secret_v2" "grafana_admin" {
+  namespace = vault_namespace.env.path_fq
+  mount     = vault_mount.kv.path
+  name      = "netlix/grafana"
+
+  data_json = jsonencode({
+    username = "admin"
+    password = random_password.grafana_admin.result
+  })
+}

@@ -89,9 +89,11 @@ func main() {
 		json.NewEncoder(w).Encode(map[string]string{"status": "ready"})
 	})
 
+	mux.Handle("/metrics", metricsHandler())
+
 	server := &http.Server{
 		Addr:         listenAddr,
-		Handler:      mux,
+		Handler:      metricsMiddleware(mux),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  30 * time.Second,
