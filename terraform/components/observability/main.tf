@@ -44,6 +44,16 @@ resource "kubectl_manifest" "vault_static_secret_grafana" {
   depends_on = [kubernetes_namespace.observability]
 }
 
+# Give VSO time to reconcile the VaultStaticSecret and materialize the
+# `grafana-admin` K8s Secret before Grafana's pod tries to mount it.
+# Without this, the Grafana pod sits in ContainerCreating waiting on the
+# secret — which blocks the helm release's wait and can exhaust its
+# timeout on a cold cluster.
+resource "time_sleep" "wait_for_grafana_secret" {
+  depends_on      = [kubectl_manifest.vault_static_secret_grafana]
+  create_duration = "90s"
+}
+
 # ─── kube-prometheus-stack (Prometheus + Grafana + AlertManager) ──────────
 
 resource "helm_release" "kube_prometheus_stack" {
@@ -53,7 +63,12 @@ resource "helm_release" "kube_prometheus_stack" {
   chart      = "kube-prometheus-stack"
   version    = var.kube_prometheus_stack_version
   wait       = true
-  timeout    = 900
+  # 30 min — cold-cluster first install pulls ~10 images (prometheus,
+  # alertmanager, grafana + sidecars, operator, kube-state-metrics,
+  # node-exporter), provisions 3 PVCs, and waits for Grafana to mount
+  # the VSO-synced admin secret. 15 min was too tight.
+  timeout = 1800
+  atomic  = false
 
   values = [yamlencode({
     # Pick up ServiceMonitors / PodMonitors / Rules from any namespace
@@ -225,7 +240,10 @@ resource "helm_release" "kube_prometheus_stack" {
     }
   })]
 
-  depends_on = [kubectl_manifest.vault_static_secret_grafana]
+  depends_on = [
+    kubectl_manifest.vault_static_secret_grafana,
+    time_sleep.wait_for_grafana_secret,
+  ]
 }
 
 # ─── Loki (single-binary, filesystem backend on gp3 PVC) ──────────────────
@@ -237,7 +255,10 @@ resource "helm_release" "loki" {
   chart      = "loki"
   version    = var.loki_version
   wait       = true
-  timeout    = 600
+  # Single-binary Loki needs image pull + PVC bind + Gateway nginx pod;
+  # 10 min is a safer cold-install budget than 10.
+  timeout = 900
+  atomic  = false
 
   values = [yamlencode({
     deploymentMode = "SingleBinary"

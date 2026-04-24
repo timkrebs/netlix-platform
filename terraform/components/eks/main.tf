@@ -7,6 +7,21 @@ module "eks" {
   vpc_id          = var.vpc_id
   subnet_ids      = var.private_subnet_ids
 
+  # Force emission of `compute_config { enabled = false }` so the AWS
+  # provider's EKS Auto Mode triad validator
+  # (validateAutoModeCustomizeDiff, added in provider v5.79) sees a
+  # concrete `false` for compute_config instead of nil. In v20.x, the
+  # sibling blocks (elastic_load_balancing, block_storage) stay gated on
+  # auto_mode_enabled and remain absent — the validator treats absent
+  # sub-blocks as `false`, so all three resolve consistently. Without
+  # this, a plan that touches kubernetes_network_config (ip_family,
+  # service_ipv4_cidr, etc.) trips the triad check.
+  # The cleaner fix lives in EKS module v21.3.2+, which requires AWS
+  # provider v6.x and changes IRSA OIDC URL format — too invasive here.
+  cluster_compute_config = {
+    enabled = false
+  }
+
   cluster_endpoint_public_access       = length(var.cluster_endpoint_public_access_cidrs) > 0
   cluster_endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
   cluster_endpoint_private_access      = true
