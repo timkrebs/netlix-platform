@@ -293,7 +293,7 @@ resource "aws_cloudwatch_dashboard" "main" {
           title   = "Node CPU Utilization"
           view    = "timeSeries"
           stacked = false
-          region  = data.aws_region.current.name
+          region  = data.aws_region.current.region
           metrics = [
             ["ContainerInsights", "node_cpu_utilization", "ClusterName", var.eks_cluster_name, { stat = "Average", label = "Average" }],
             ["...", { stat = "Maximum", label = "Max" }]
@@ -312,7 +312,7 @@ resource "aws_cloudwatch_dashboard" "main" {
           title   = "Node Memory Utilization"
           view    = "timeSeries"
           stacked = false
-          region  = data.aws_region.current.name
+          region  = data.aws_region.current.region
           metrics = [
             ["ContainerInsights", "node_memory_utilization", "ClusterName", var.eks_cluster_name, { stat = "Average", label = "Average" }],
             ["...", { stat = "Maximum", label = "Max" }]
@@ -331,7 +331,7 @@ resource "aws_cloudwatch_dashboard" "main" {
           title   = "Node Network (bytes/sec)"
           view    = "timeSeries"
           stacked = false
-          region  = data.aws_region.current.name
+          region  = data.aws_region.current.region
           metrics = [
             ["ContainerInsights", "node_network_total_bytes", "ClusterName", var.eks_cluster_name, { stat = "Average", label = "Total bytes/s" }]
           ]
@@ -360,7 +360,7 @@ resource "aws_cloudwatch_dashboard" "main" {
           title   = "Pod CPU Utilization"
           view    = "timeSeries"
           stacked = false
-          region  = data.aws_region.current.name
+          region  = data.aws_region.current.region
           metrics = [
             ["ContainerInsights", "pod_cpu_utilization", "ClusterName", var.eks_cluster_name, "Namespace", "consul", "PodName", "web", { stat = "Average", label = "web" }],
             ["ContainerInsights", "pod_cpu_utilization", "ClusterName", var.eks_cluster_name, "Namespace", "consul", "PodName", "api", { stat = "Average", label = "api" }]
@@ -379,7 +379,7 @@ resource "aws_cloudwatch_dashboard" "main" {
           title   = "Pod Memory Utilization"
           view    = "timeSeries"
           stacked = false
-          region  = data.aws_region.current.name
+          region  = data.aws_region.current.region
           metrics = [
             ["ContainerInsights", "pod_memory_utilization", "ClusterName", var.eks_cluster_name, "Namespace", "consul", "PodName", "web", { stat = "Average", label = "web" }],
             ["ContainerInsights", "pod_memory_utilization", "ClusterName", var.eks_cluster_name, "Namespace", "consul", "PodName", "api", { stat = "Average", label = "api" }]
@@ -398,7 +398,7 @@ resource "aws_cloudwatch_dashboard" "main" {
           title   = "Pod Count (Running)"
           view    = "timeSeries"
           stacked = true
-          region  = data.aws_region.current.name
+          region  = data.aws_region.current.region
           metrics = [
             ["ContainerInsights", "pod_number_of_running_pods", "ClusterName", var.eks_cluster_name, "Namespace", "consul", { stat = "Average", label = "consul" }],
             ["ContainerInsights", "pod_number_of_running_pods", "ClusterName", var.eks_cluster_name, "Namespace", "argocd", { stat = "Average", label = "argocd" }],
@@ -419,7 +419,7 @@ resource "aws_cloudwatch_dashboard" "main" {
           title   = "Container Restarts"
           view    = "timeSeries"
           stacked = false
-          region  = data.aws_region.current.name
+          region  = data.aws_region.current.region
           metrics = [
             ["ContainerInsights", "pod_number_of_container_restarts", "ClusterName", var.eks_cluster_name, "Namespace", "consul", { stat = "Sum", label = "consul" }]
           ]
@@ -436,7 +436,7 @@ resource "aws_cloudwatch_dashboard" "main" {
           title   = "Pod Network Rx/Tx (bytes/sec)"
           view    = "timeSeries"
           stacked = false
-          region  = data.aws_region.current.name
+          region  = data.aws_region.current.region
           metrics = [
             ["ContainerInsights", "pod_network_rx_bytes", "ClusterName", var.eks_cluster_name, "Namespace", "consul", { stat = "Average", label = "Rx" }],
             ["ContainerInsights", "pod_network_tx_bytes", "ClusterName", var.eks_cluster_name, "Namespace", "consul", { stat = "Average", label = "Tx" }]
@@ -454,7 +454,7 @@ resource "aws_cloudwatch_dashboard" "main" {
           title   = "Node Filesystem Utilization"
           view    = "timeSeries"
           stacked = false
-          region  = data.aws_region.current.name
+          region  = data.aws_region.current.region
           metrics = [
             ["ContainerInsights", "node_filesystem_utilization", "ClusterName", var.eks_cluster_name, { stat = "Average", label = "Average" }],
             ["...", { stat = "Maximum", label = "Max" }]
@@ -485,7 +485,7 @@ resource "aws_cloudwatch_dashboard" "main" {
           title   = "VPC Rejected Connections (Flow Logs)"
           view    = "timeSeries"
           stacked = false
-          region  = data.aws_region.current.name
+          region  = data.aws_region.current.region
           metrics = [
             ["${var.project}/${var.environment}/VPCFlowLogs", "RejectedConnectionCount", { stat = "Sum" }]
           ]

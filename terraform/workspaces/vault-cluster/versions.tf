@@ -12,8 +12,11 @@ terraform {
 
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
+      source = "hashicorp/aws"
+      # See app-cluster/versions.tf for rationale — v6.15+ required for
+      # the EKS UpdateClusterConfig "type for cluster update was not
+      # provided" fix (aea201c, upstream PR 44334).
+      version = "~> 6.15"
     }
     helm = {
       source  = "hashicorp/helm"

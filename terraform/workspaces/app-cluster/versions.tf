@@ -12,8 +12,18 @@ terraform {
 
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
+      source = "hashicorp/aws"
+      # Need v6.15+ for the aea201c fix
+      # (hashicorp/terraform-provider-aws#44334): when an existing,
+      # non-Auto-Mode EKS cluster transitions to having an explicit
+      # `compute_config { enabled = false }` block, the provider must
+      # populate storage_config + kubernetes_network_config in the
+      # UpdateClusterConfig request or AWS returns "The type for cluster
+      # update was not provided." Fix is v6.x only, not backported to
+      # v5.x. v6 contract with v20.33.0 EKS module: module's
+      # `required_providers { aws = ">= 5.83" }` has no upper bound, so
+      # v6 is allowed.
+      version = "~> 6.15"
     }
     helm = {
       source  = "hashicorp/helm"

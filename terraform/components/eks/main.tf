@@ -1,36 +1,37 @@
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "20.33.0"
+  version = "~> 21.18"
 
-  cluster_name    = var.cluster_name
-  cluster_version = var.cluster_version
-  vpc_id          = var.vpc_id
-  subnet_ids      = var.private_subnet_ids
+  name               = var.cluster_name
+  kubernetes_version = var.cluster_version
+  vpc_id             = var.vpc_id
+  subnet_ids         = var.private_subnet_ids
 
-  # Force emission of `compute_config { enabled = false }` so the AWS
-  # provider's EKS Auto Mode triad validator
-  # (validateAutoModeCustomizeDiff, added in provider v5.79) sees a
-  # concrete `false` for compute_config instead of nil. In v20.x, the
-  # sibling blocks (elastic_load_balancing, block_storage) stay gated on
-  # auto_mode_enabled and remain absent — the validator treats absent
-  # sub-blocks as `false`, so all three resolve consistently. Without
-  # this, a plan that touches kubernetes_network_config (ip_family,
-  # service_ipv4_cidr, etc.) trips the triad check.
-  # The cleaner fix lives in EKS module v21.3.2+, which requires AWS
-  # provider v6.x and changes IRSA OIDC URL format — too invasive here.
-  cluster_compute_config = {
+  endpoint_public_access       = length(var.cluster_endpoint_public_access_cidrs) > 0
+  endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
+  endpoint_private_access      = true
+
+  # Explicit non-null compute_config is required for existing clusters
+  # that were originally created without EKS Auto Mode. AWS provider
+  # v6's aws_eks_cluster schema marks compute_config /
+  # kubernetes_network_config.elastic_load_balancing /
+  # storage_config.block_storage as Computed with Default=false, so the
+  # refresh populates them in state. With var.compute_config = null
+  # (v21 default), the module emits none of the three blocks and
+  # Terraform plans to remove them — tripping the Auto Mode triad
+  # validator (validateAutoModeCustomizeDiff). Passing an explicit
+  # `{ enabled = false }` makes v21 emit all three blocks with
+  # enabled=false, so the triad resolves consistently and the update
+  # path sends a well-formed UpdateClusterConfig request.
+  compute_config = {
     enabled = false
   }
-
-  cluster_endpoint_public_access       = length(var.cluster_endpoint_public_access_cidrs) > 0
-  cluster_endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
-  cluster_endpoint_private_access      = true
 
   # Allow other workloads in the same VPC to reach this cluster's API on
   # 443 over the private endpoint. Required for cross-cluster Vault
   # TokenReview (vault-cluster pods → app-cluster API). Default behavior
   # only allows the cluster's own nodes.
-  cluster_security_group_additional_rules = var.cluster_api_extra_ingress_cidrs == null ? {} : {
+  security_group_additional_rules = var.cluster_api_extra_ingress_cidrs == null ? {} : {
     in_vpc_api_access = {
       description = "Allow other VPC workloads to reach the cluster API"
       protocol    = "tcp"
@@ -41,7 +42,7 @@ module "eks" {
     }
   }
 
-  cluster_encryption_config = {
+  encryption_config = {
     provider_key_arn = aws_kms_key.eks.arn
     resources        = ["secrets"]
   }
@@ -66,9 +67,9 @@ module "eks" {
 
   # Control plane logging — captures API, audit, authenticator, controller
   # manager, and scheduler logs to CloudWatch for security and debugging.
-  cluster_enabled_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+  enabled_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
 
-  cluster_addons = {
+  addons = {
     coredns            = { most_recent = true }
     kube-proxy         = { most_recent = true }
     vpc-cni            = { most_recent = true, service_account_role_arn = module.vpc_cni_irsa.iam_role_arn }
