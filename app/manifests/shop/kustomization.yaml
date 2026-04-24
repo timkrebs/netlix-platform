@@ -24,3 +24,7 @@ resources:
   - orders.yaml
   - gateway.yaml
   - migration-job.yaml
+  - catalog-hpa.yaml
+  - auth-hpa.yaml
+  - orders-hpa.yaml
+  - gateway-hpa.yaml

@@ -1,0 +1,51 @@
+# HPA for the gateway — the public entry point that fronts the SPA and
+# reverse-proxies /api/* to auth, catalog, and orders. Sized widest
+# because every request goes through it first. CPU threshold picked to
+# trigger well before the 250m limit kicks in.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: gateway
+  namespace: consul
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: gateway
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    # Aggressive scale-up: respond fast to traffic spikes. No stabilization
+    # delay, allow doubling every 30s (100% policy) or adding 2 pods / 30s,
+    # whichever is larger.
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 30
+        - type: Pods
+          value: 2
+          periodSeconds: 30
+      selectPolicy: Max
+    # Conservative scale-down: 5 min stabilization + at most 50% of pods
+    # removed per minute. Avoids flapping during uneven traffic.
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60

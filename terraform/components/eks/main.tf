@@ -68,6 +68,10 @@ module "eks" {
     kube-proxy         = { most_recent = true }
     vpc-cni            = { most_recent = true, service_account_role_arn = module.vpc_cni_irsa.iam_role_arn }
     aws-ebs-csi-driver = { most_recent = true, service_account_role_arn = module.ebs_csi_irsa.iam_role_arn }
+    # metrics-server exposes the standard metrics.k8s.io API so
+    # HorizontalPodAutoscalers can read pod CPU/memory. Required for
+    # the shop-services HPAs in app/manifests/shop/*-hpa.yaml.
+    metrics-server = { most_recent = true }
     amazon-cloudwatch-observability = {
       addon_version            = "v4.10.3-eksbuild.1"
       service_account_role_arn = module.cloudwatch_observability_irsa.iam_role_arn
