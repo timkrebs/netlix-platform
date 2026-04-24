@@ -141,11 +141,13 @@ resource "helm_release" "kube_prometheus_stack" {
         # telemetry stanza + `unauthenticated_metrics_access = true` on
         # the listener (see vault-server/main.tf) let us hit
         # /v1/sys/metrics without a token. ACM cert is publicly trusted
-        # so no insecure_skip_verify needed. The `vault` label is
-        # forced onto the metric so Grafana's HashiCorp Vault dashboard
-        # (gnetId 12904) picks it up.
+        # so no insecure_skip_verify needed. Job name is deliberately
+        # "vault" — the Grafana.com HashiCorp Vault dashboard (gnetId
+        # 12904) hardcodes `job="vault"` in every panel query and
+        # template variable, so renaming this job would leave the
+        # dashboard blank.
         additionalScrapeConfigs = [{
-          job_name        = "vault-external"
+          job_name        = "vault"
           scheme          = "https"
           metrics_path    = "/v1/sys/metrics"
           params          = { format = ["prometheus"] }
@@ -154,7 +156,7 @@ resource "helm_release" "kube_prometheus_stack" {
           static_configs = [{
             targets = ["vault.${var.environment}.${var.domain}"]
             labels = {
-              cluster = "vault-${var.environment}"
+              vault_cluster = "vault-${var.environment}"
             }
           }]
         }]
