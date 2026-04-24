@@ -54,3 +54,15 @@ tmp
 
 # Files to ignore
 IMPROVEMENTS.md
+
+# Node (frontend)
+node_modules/
+dist/
+.vite/
+*.local
+
+# Python (load tests)
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/

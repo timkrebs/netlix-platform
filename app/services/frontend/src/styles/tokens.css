@@ -1,0 +1,62 @@
+:root {
+  --bg: oklch(0.18 0 0);
+  --bg-elev: oklch(0.22 0 0);
+  --bg-inset: oklch(0.15 0 0);
+  --line: oklch(0.30 0 0);
+  --line-strong: oklch(0.40 0 0);
+  --fg: oklch(0.96 0 0);
+  --fg-dim: oklch(0.72 0 0);
+  --fg-mute: oklch(0.55 0 0);
+  --accent: oklch(0.88 0.19 130);
+  --accent-ink: oklch(0.18 0 0);
+  --warn: oklch(0.75 0.15 60);
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root { min-height: 100vh; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+a { color: inherit; text-decoration: none; cursor: pointer; }
+
+input, textarea, select {
+  font: inherit;
+  color: inherit;
+  background: var(--bg-inset);
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+  border-radius: 0;
+  outline: none;
+  width: 100%;
+}
+
+input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.t-mono { font-family: var(--font-mono); }

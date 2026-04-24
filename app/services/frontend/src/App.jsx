@@ -1,14 +1,37 @@
 import React, { useEffect, useState } from 'react';
-import { api, getUser, setSession, clearSession, onSessionExpired } from './api.js';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { api, getUser, clearSession, onSessionExpired } from './api.js';
+import Nav from './components/Nav.jsx';
+import CartDrawer from './components/CartDrawer.jsx';
+import CatalogPage from './pages/CatalogPage.jsx';
+import CartPage from './pages/CartPage.jsx';
+import CheckoutPage from './pages/CheckoutPage.jsx';
+import PDPPage from './pages/PDPPage.jsx';
+import LoginPage from './pages/LoginPage.jsx';
+import OrdersPage from './pages/OrdersPage.jsx';
+import useCart from './hooks/useCart.js';
+import useProducts from './hooks/useProducts.js';
 
-function fmtPrice(cents) {
-  return `$${(cents / 100).toFixed(2)}`;
+function pathToNav(pathname) {
+  if (pathname === '/login') return 'login';
+  if (pathname === '/orders') return 'orders';
+  return 'shop';
 }
 
 export default function App() {
   const [user, setUser] = useState(getUser());
-  const [view, setView] = useState('shop');
   const [bootstrapping, setBootstrapping] = useState(!!getUser());
+  const [cartOpen, setCartOpen] = useState(false);
+  const { cart, addToCart: addToCartBase, setQty, clear: clearCart, count } = useCart();
+  const productsCtx = useProducts();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const view = pathToNav(location.pathname);
+
+  function addToCart(product, qty = 1) {
+    addToCartBase(product, qty);
+    setCartOpen(true);
+  }
 
   // Validate any persisted session against the server on mount. If the
   // token has expired, was revoked, or the user no longer exists, /me
@@ -30,228 +53,138 @@ export default function App() {
     try { await api.logout(); } catch { /* fire-and-forget */ }
     clearSession();
     setUser(null);
-    setView('shop');
+    navigate('/');
   }
 
-  if (bootstrapping) return <div className="app"><p className="loading">Loading…</p></div>;
-
-  return (
-    <div className="app">
-      <header>
-        <h1>Netlix Shop</h1>
-        <nav>
-          <button onClick={() => setView('shop')}>Shop</button>
-          {user && <button onClick={() => setView('orders')}>My Orders</button>}
-          {user ? (
-            <>
-              <span className="who">{user.email}</span>
-              <button onClick={logout}>Log out</button>
-            </>
-          ) : (
-            <button onClick={() => setView('login')}>Log in</button>
-          )}
-        </nav>
-      </header>
-      <main>
-        {view === 'shop' && <Shop user={user} />}
-        {view === 'login' && (
-          <Login
-            onAuth={(u) => {
-              setUser(u);
-              setView('shop');
-            }}
-          />
-        )}
-        {view === 'orders' && user && <Orders />}
-      </main>
-    </div>
-  );
-}
-
-function Shop({ user }) {
-  const [products, setProducts] = useState([]);
-  const [cart, setCart] = useState({});
-  const [error, setError] = useState('');
-  const [confirmation, setConfirmation] = useState(null);
-
-  useEffect(() => {
-    api.listProducts().then(setProducts).catch((e) => setError(e.message));
-  }, []);
-
-  function addToCart(p) {
-    setCart((c) => ({ ...c, [p.id]: (c[p.id] || 0) + 1 }));
-  }
-  function changeQty(pid, delta) {
-    setCart((c) => {
-      const next = { ...c };
-      const n = (next[pid] || 0) + delta;
-      if (n <= 0) delete next[pid];
-      else next[pid] = n;
-      return next;
-    });
+  function handleNavigate(next) {
+    if (next === 'shop') navigate('/');
+    else if (next === 'login') navigate('/login');
+    else if (next === 'orders') navigate('/orders');
   }
 
-  async function checkout() {
-    setError('');
+  function openCart() { setCartOpen(true); }
+  function openProduct(product) { navigate(`/p/${product.id}`); }
+
+  function reorder(order) {
+    for (const item of order.items || []) {
+      addToCartBase({ id: item.product_id }, item.quantity);
+    }
+    navigate('/cart');
+  }
+
+  async function placeOrder() {
+    if (!user) {
+      navigate('/login');
+      return { ok: false, needsAuth: true };
+    }
     const items = Object.entries(cart).map(([pid, qty]) => ({
       product_id: Number(pid),
       quantity: qty,
     }));
-    if (items.length === 0) return;
+    if (items.length === 0) return { ok: false, error: 'Cart is empty.' };
     try {
       const order = await api.createOrder(items);
-      setConfirmation(order);
-      setCart({});
+      clearCart();
+      navigate('/checkout', { state: { order, placedAt: Date.now() } });
+      return { ok: true, order };
     } catch (e) {
-      setError(e.message);
+      return { ok: false, error: e.message || 'Checkout failed.' };
     }
   }
 
-  const cartTotal = products
-    .filter((p) => cart[p.id])
-    .reduce((sum, p) => sum + p.price_cents * cart[p.id], 0);
-
-  return (
-    <div className="shop">
-      <section className="products">
-        {products.map((p) => (
-          <article key={p.id} className="product">
-            <h3>{p.title}</h3>
-            <p className="desc">{p.description}</p>
-            <p className="price">{fmtPrice(p.price_cents)}</p>
-            <p className="stock">{p.stock} in stock</p>
-            <button disabled={p.stock === 0} onClick={() => addToCart(p)}>
-              Add to cart
-            </button>
-          </article>
-        ))}
-      </section>
-      <aside className="cart">
-        <h2>Cart</h2>
-        {Object.keys(cart).length === 0 && <p>Empty.</p>}
-        <ul>
-          {products
-            .filter((p) => cart[p.id])
-            .map((p) => (
-              <li key={p.id}>
-                <span>{p.title}</span>
-                <span className="qty">
-                  <button onClick={() => changeQty(p.id, -1)}>-</button>
-                  {cart[p.id]}
-                  <button onClick={() => changeQty(p.id, 1)}>+</button>
-                </span>
-                <span>{fmtPrice(p.price_cents * cart[p.id])}</span>
-              </li>
-            ))}
-        </ul>
-        {Object.keys(cart).length > 0 && (
-          <>
-            <p className="total">Total: {fmtPrice(cartTotal)}</p>
-            {user ? (
-              <button onClick={checkout}>Place order</button>
-            ) : (
-              <p className="hint">Log in to place an order.</p>
-            )}
-          </>
-        )}
-        {error && <p className="error">{error}</p>}
-        {confirmation && (
-          <div className="confirmation">
-            <p>Order #{confirmation.id} confirmed!</p>
-            <p>Total: {fmtPrice(confirmation.total_cents)}</p>
+  if (bootstrapping) {
+    return (
+      <>
+        <Nav view={view} onNavigate={handleNavigate} cartCount={count} onOpenCart={openCart} />
+        <section className="t-page">
+          <div className="t-page-empty">
+            <div className="t-loading" style={{ margin: 0, fontSize: 14 }}>SYNC…</div>
           </div>
-        )}
-      </aside>
-    </div>
-  );
-}
-
-function Login({ onAuth }) {
-  const [mode, setMode] = useState('login');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-
-  async function submit(e) {
-    e.preventDefault();
-    setError('');
-    setSubmitting(true);
-    try {
-      const fn = mode === 'login' ? api.login : api.signup;
-      const res = await fn(email, password);
-      setSession(res.token, { id: res.user_id, email: res.email });
-      onAuth({ id: res.user_id, email: res.email });
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
+        </section>
+      </>
+    );
   }
 
   return (
-    <form className="auth" onSubmit={submit}>
-      <h2>{mode === 'login' ? 'Log in' : 'Create account'}</h2>
-      <label>
-        Email
-        <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required autoComplete="email" />
-      </label>
-      <label>
-        Password
-        <input
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          type="password"
-          minLength={mode === 'signup' ? 10 : 1}
-          required
-          autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+    <>
+      <Nav view={view} onNavigate={handleNavigate} cartCount={count} onOpenCart={openCart} />
+      {user && (
+        <div className="t-user-bar">
+          <span>{user.email}</span>
+          <button type="button" className="t-link" onClick={logout}>LOG OUT</button>
+        </div>
+      )}
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <CatalogPage
+              products={productsCtx.products}
+              loading={productsCtx.loading}
+              error={productsCtx.error}
+              refetch={productsCtx.refetch}
+              onOpenProduct={openProduct}
+              onAddToCart={addToCart}
+            />
+          }
         />
-        {mode === 'signup' && (
-          <small className="hint">
-            10+ chars, at least three of: uppercase, lowercase, digit, symbol
-          </small>
-        )}
-      </label>
-      <button type="submit" disabled={submitting}>
-        {submitting ? '...' : mode === 'login' ? 'Log in' : 'Sign up'}
-      </button>
-      <button
-        type="button"
-        className="link"
-        onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); }}
-      >
-        {mode === 'login' ? 'Need an account? Sign up' : 'Have an account? Log in'}
-      </button>
-      {error && <p className="error">{error}</p>}
-    </form>
+        <Route
+          path="/p/:id"
+          element={
+            <PDPPage
+              products={productsCtx.products}
+              loading={productsCtx.loading}
+              error={productsCtx.error}
+              refetch={productsCtx.refetch}
+              onAddToCart={addToCart}
+            />
+          }
+        />
+        <Route
+          path="/cart"
+          element={
+            <CartPage
+              cart={cart}
+              products={productsCtx.products}
+              productsLoading={productsCtx.loading}
+              setQty={setQty}
+              onCheckout={placeOrder}
+            />
+          }
+        />
+        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route
+          path="/login"
+          element={
+            user
+              ? <Navigate to="/" replace />
+              : <LoginPage onAuth={setUser} />
+          }
+        />
+        <Route
+          path="/orders"
+          element={
+            user
+              ? (
+                <OrdersPage
+                  userEmail={user.email}
+                  products={productsCtx.products}
+                  onReorder={reorder}
+                />
+              )
+              : <Navigate to="/login" replace />
+          }
+        />
+      </Routes>
+      <CartDrawer
+        open={cartOpen}
+        onClose={() => setCartOpen(false)}
+        cart={cart}
+        products={productsCtx.products}
+        productsLoading={productsCtx.loading}
+        setQty={setQty}
+      />
+    </>
   );
 }
 
-function Orders() {
-  const [orders, setOrders] = useState([]);
-  const [error, setError] = useState('');
-  useEffect(() => {
-    api.listOrders().then(setOrders).catch((e) => setError(e.message));
-  }, []);
-  return (
-    <div className="orders">
-      <h2>Your orders</h2>
-      {error && <p className="error">{error}</p>}
-      {orders.length === 0 && !error && <p>No orders yet.</p>}
-      <ul>
-        {orders.map((o) => (
-          <li key={o.id}>
-            <strong>Order #{o.id}</strong> — {fmtPrice(o.total_cents)} ({o.status})
-            <ul className="items">
-              {o.items.map((it, idx) => (
-                <li key={idx}>
-                  product {it.product_id} × {it.quantity} @ {fmtPrice(it.price_cents)}
-                </li>
-              ))}
-            </ul>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
