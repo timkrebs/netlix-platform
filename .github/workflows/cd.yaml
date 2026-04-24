@@ -1,17 +1,21 @@
 name: CD
 
+# CD runs exclusively via workflow_call from CI (ci.yaml → cd job)
+# or manual workflow_dispatch. Direct push triggers were removed so
+# deployments can't race ahead of the CI gate (terraform fmt/validate,
+# go test, kubeconform, image scan, sentinel). Retrigger loops from
+# this workflow's own bot commit are avoided two ways: (1) the commit
+# message includes [skip ci] which GitHub honors cluster-wide, and
+# (2) workflow_call no longer matches the manifest-path filter since
+# there is no path filter to match.
 on:
-  push:
-    branches: [dev, staging]
-    paths:
-      - 'app/services/catalog/**'
-      - 'app/services/auth/**'
-      - 'app/services/orders/**'
-      - 'app/services/gateway/**'
-      - 'app/services/frontend/**'
-      - 'app/services/schema/**'
-      - 'app/manifests/**'
-      - '.github/workflows/cd.yaml'
+  workflow_call:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Why are you manually triggering CD? (for audit log)"
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -136,7 +140,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add app/manifests/overlays/
           git diff --staged --quiet && echo "No changes to commit" && exit 0
-          git commit -m "cd(${{ needs.build-and-push.outputs.environment }}): bump shop images to ${{ needs.build-and-push.outputs.image_tag }}"
+          # [skip ci] prevents the bot commit from retriggering this
+          # workflow via CI — CD is already complete for this SHA, and
+          # ArgoCD picks up the manifest bump directly from the repo.
+          git commit -m "cd(${{ needs.build-and-push.outputs.environment }}): bump shop images to ${{ needs.build-and-push.outputs.image_tag }} [skip ci]"
           git push
 
   verify-deployment:

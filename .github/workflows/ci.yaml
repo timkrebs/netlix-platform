@@ -8,6 +8,13 @@ on:
     branches: [dev, staging, main]
     paths: ['terraform/**', 'bootstrap/**', '.github/workflows/**', 'sentinel/**', 'app/**']
 
+# Required so the `cd` job (reusable workflow call) can push image tag
+# bumps back to the repo and publish to GHCR. Reusable-workflow calls
+# inherit from the caller, so setting these here applies to cd.yaml too.
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   terraform-fmt:
     name: Format check
@@ -178,3 +185,100 @@ jobs:
           exit-code: '1'
           severity: CRITICAL,HIGH
           ignore-unfixed: true
+
+  # ─── CI → CD gate ─────────────────────────────────────────────────
+  # Runs cd.yaml as a reusable workflow ONLY when every CI check above
+  # has passed AND we're on a push to dev or staging. PRs never trigger
+  # CD; pushes to main are handled via promotion PR from staging to
+  # main, not direct deploys.
+  cd:
+    name: Deploy (CD)
+    needs:
+      - terraform-fmt
+      - sentinel-test
+      - validate-components
+      - validate-workspaces
+      - go-test
+      - validate-manifests
+      - image-scan
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging')
+    uses: ./.github/workflows/cd.yaml
+    # Inherit GITHUB_TOKEN + any org secrets CD needs. CD only reads
+    # GITHUB_TOKEN today, but `inherit` keeps us forward-compatible.
+    secrets: inherit
+
+  # ─── CD → load-test gate ──────────────────────────────────────────
+  # Smoke-profile Locust run against the freshly deployed dev gateway,
+  # validated by load-testing/check-results.sh. Intentionally modest
+  # (200 users / 2 min) — this runs on every merge to dev so it has to
+  # be cheap and fast. Heavy stress profiles (e.g. 20k users) stay out
+  # of CI and are invoked manually against staging.
+  #
+  # Scoped to push-to-dev only: staging must stay stable for manual
+  # perf validation before promotion to prod.
+  load-test:
+    name: Smoke load test
+    needs: [cd]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Locust
+        run: pip install 'locust==2.32.4'
+
+      - name: Wait for fresh rollout to settle
+        run: |
+          # cd.yaml's verify-deployment already gate-checked /health,
+          # but ArgoCD may still be rolling new pods when we land here.
+          # Probe a couple of times so the Locust run starts against a
+          # steady-state cluster rather than mid-rollout.
+          for i in $(seq 1 12); do
+            S=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 \
+                  https://app.dev.netlix.dev/health || true)
+            echo "attempt ${i}: HTTP ${S}"
+            [[ "$S" == "200" ]] && { echo "ready"; exit 0; }
+            sleep 5
+          done
+          echo "::error::Gateway not ready for load test"; exit 1
+
+      - name: Run headless load test
+        working-directory: load-testing
+        env:
+          # Passed through to locustfile.py for its own threshold checks.
+          LOCUST_MAX_FAIL_RATIO: '0.05'
+          LOCUST_MAX_P95_MS: '2000'
+        run: |
+          mkdir -p results
+          locust --headless \
+                 --users 200 \
+                 --spawn-rate 20 \
+                 --run-time 2m \
+                 --host https://app.dev.netlix.dev \
+                 --csv results/load-test \
+                 --only-summary \
+                 --exit-code-on-error 1
+
+      - name: Validate thresholds
+        working-directory: load-testing
+        env:
+          MAX_FAIL_RATIO: '0.05'
+          MAX_P95_MS: '2000'
+          MAX_AVG_MS: '1000'
+          MIN_RPS: '10'
+        run: ./check-results.sh results/load-test
+
+      - name: Upload Locust CSVs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-results-${{ github.sha }}
+          path: load-testing/results/
+          retention-days: 30
