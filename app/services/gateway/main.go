@@ -1,16 +1,40 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
+
+// Pooled HTTP transport shared across all three reverse-proxy targets.
+// Default net/http.Transport caps idle connections per host at 2, so at
+// 20k concurrent requests the gateway opens/closes ~10k conns per
+// backend per second, exhausting ephemeral ports and backend
+// file-descriptors. These tuned values hold a pool of ~32 idle conns
+// per backend host and reuse aggressively.
+var proxyTransport = &http.Transport{
+	Proxy: http.ProxyFromEnvironment,
+	DialContext: (&net.Dialer{
+		Timeout:   5 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}).DialContext,
+	MaxIdleConns:          200,
+	MaxIdleConnsPerHost:   32,
+	IdleConnTimeout:       90 * time.Second,
+	TLSHandshakeTimeout:   5 * time.Second,
+	ExpectContinueTimeout: 1 * time.Second,
+	ForceAttemptHTTP2:     true,
+}
 
 func main() {
 	catalogURL := mustURL("CATALOG_URL", "http://catalog:8080")
@@ -39,20 +63,40 @@ func main() {
 	mux.Handle("/", spaHandler(staticDir))
 
 	srv := &http.Server{
-		Addr:         addr,
-		Handler:      metricsMiddleware(logRequests(mux)),
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		Addr:              addr,
+		Handler:           recoverMiddleware(metricsMiddleware(logRequests(mux))),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
-	log.Printf("gateway: listening on %s (spa=%s, catalog=%s, auth=%s, orders=%s)",
-		addr, staticDir, catalogURL, authURL, ordersURL)
-	log.Fatal(srv.ListenAndServe())
+	// Run the listener in a goroutine so main() can wait for SIGTERM.
+	// Without this, K8s rolling updates / HPA scale-down kills in-flight
+	// requests as soon as the pod gets SIGTERM.
+	go func() {
+		log.Printf("gateway: listening on %s (spa=%s, catalog=%s, auth=%s, orders=%s)",
+			addr, staticDir, catalogURL, authURL, ordersURL)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("gateway: server failed: %v", err)
+		}
+	}()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	<-stop
+	log.Printf("gateway: shutdown signal received, draining for 20s")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Printf("gateway: shutdown error: %v", err)
+	}
 }
 
 func proxy(target *url.URL, stripPrefix string) http.Handler {
 	rp := httputil.NewSingleHostReverseProxy(target)
+	rp.Transport = proxyTransport // shared pooled transport, not default
 	originalDirector := rp.Director
 	rp.Director = func(r *http.Request) {
 		r.URL.Path = strings.TrimPrefix(r.URL.Path, stripPrefix)
@@ -67,6 +111,23 @@ func proxy(target *url.URL, stripPrefix string) http.Handler {
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "upstream unavailable"})
 	}
 	return rp
+}
+
+// recoverMiddleware catches panics from downstream handlers (bad
+// request bodies, nil map access, etc.) and converts them to 500s
+// instead of crashing the pod. K8s would restart the pod on a crash,
+// which during high load cascades into dropped connections for other
+// pods as they briefly become the only receivers.
+func recoverMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				log.Printf("gateway: panic %v on %s %s", rec, r.Method, r.URL.Path)
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
 }
 
 // spaHandler serves static files from dir, falling back to index.html

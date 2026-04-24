@@ -8,7 +8,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -44,15 +46,45 @@ func main() {
 
 	addr := envDefault("LISTEN_ADDR", "0.0.0.0:8080")
 	httpSrv := &http.Server{
-		Addr:         addr,
-		Handler:      metricsMiddleware(mux),
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  30 * time.Second,
+		Addr:              addr,
+		Handler:           recoverMiddleware(metricsMiddleware(mux)),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       30 * time.Second,
 	}
 
-	log.Printf("catalog: listening on %s", addr)
-	log.Fatal(httpSrv.ListenAndServe())
+	go func() {
+		log.Printf("catalog: listening on %s", addr)
+		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("catalog: server failed: %v", err)
+		}
+	}()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	<-stop
+	log.Printf("catalog: shutdown signal received, draining for 20s")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	if err := httpSrv.Shutdown(ctx); err != nil {
+		log.Printf("catalog: shutdown error: %v", err)
+	}
+}
+
+// recoverMiddleware converts handler panics (nil deref, bad rows scan,
+// etc.) to 500 responses instead of crashing the pod.
+func recoverMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				log.Printf("catalog: panic %v on %s %s", rec, r.Method, r.URL.Path)
+				writeErr(w, http.StatusInternalServerError, "internal")
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *server) routes(mux *http.ServeMux) {
@@ -63,9 +95,15 @@ func (s *server) routes(mux *http.ServeMux) {
 }
 
 func (s *server) listProducts(w http.ResponseWriter, r *http.Request) {
+	// Bounded pagination. Previously unbounded SELECT * would ship the
+	// entire products table on every request — under load that's both
+	// a network amplifier and a DB hot path. Default 50, hard cap 500.
+	limit := clampInt(parseIntQuery(r, "limit", 50), 1, 500)
+	offset := maxInt(parseIntQuery(r, "offset", 0), 0)
+
 	rows, err := s.db.QueryContext(r.Context(),
 		`SELECT id, sku, title, description, price_cents, image_url, stock
-		   FROM products ORDER BY id`)
+		   FROM products ORDER BY id LIMIT $1 OFFSET $2`, limit, offset)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "query failed")
 		log.Printf("catalog: list query: %v", err)
@@ -73,7 +111,7 @@ func (s *server) listProducts(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	out := make([]Product, 0, 16)
+	out := make([]Product, 0, limit)
 	for rows.Next() {
 		var p Product
 		if err := rows.Scan(&p.ID, &p.SKU, &p.Title, &p.Description, &p.PriceCents, &p.ImageURL, &p.Stock); err != nil {
@@ -83,6 +121,32 @@ func (s *server) listProducts(w http.ResponseWriter, r *http.Request) {
 		out = append(out, p)
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+func parseIntQuery(r *http.Request, key string, fallback int) int {
+	if v := r.URL.Query().Get(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
+	}
+	return fallback
+}
+
+func clampInt(v, lo, hi int) int {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func (s *server) getProduct(w http.ResponseWriter, r *http.Request) {

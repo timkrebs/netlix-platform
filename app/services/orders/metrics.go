@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -44,7 +45,21 @@ func metricsMiddleware(next http.Handler) http.Handler {
 		start := time.Now()
 		rec := &metricsRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
-		httpRequests.WithLabelValues(r.Method, r.URL.Path, strconv.Itoa(rec.status)).Inc()
-		httpDuration.WithLabelValues(r.Method, r.URL.Path).Observe(time.Since(start).Seconds())
+		// Normalize parameterized paths so Prometheus label cardinality
+		// stays bounded (see catalog/metrics.go for the same pattern).
+		path := normalizePath(r.URL.Path)
+		httpRequests.WithLabelValues(r.Method, path, strconv.Itoa(rec.status)).Inc()
+		httpDuration.WithLabelValues(r.Method, path).Observe(time.Since(start).Seconds())
 	})
+}
+
+func normalizePath(p string) string {
+	switch p {
+	case "/health", "/ready", "/metrics", "/orders":
+		return p
+	}
+	if strings.HasPrefix(p, "/orders/") {
+		return "/orders/:id"
+	}
+	return "/other"
 }

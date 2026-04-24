@@ -6,16 +6,24 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	_ "github.com/lib/pq"
 )
+
+// maxBodyBytes caps createOrder's JSON body. Default net/http has no
+// cap; an attacker sending a 100MB body under 20k concurrent pods
+// OOMs the service. 64KiB is far above any legitimate order payload.
+const maxBodyBytes = 64 << 10
 
 type orderItemInput struct {
 	ProductID int64 `json:"product_id"`
@@ -66,15 +74,43 @@ func main() {
 
 	addr := envDefault("LISTEN_ADDR", "0.0.0.0:8080")
 	httpSrv := &http.Server{
-		Addr:         addr,
-		Handler:      metricsMiddleware(mux),
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  30 * time.Second,
+		Addr:              addr,
+		Handler:           recoverMiddleware(metricsMiddleware(mux)),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       30 * time.Second,
 	}
 
-	log.Printf("orders: listening on %s", addr)
-	log.Fatal(httpSrv.ListenAndServe())
+	go func() {
+		log.Printf("orders: listening on %s", addr)
+		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("orders: server failed: %v", err)
+		}
+	}()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	<-stop
+	log.Printf("orders: shutdown signal received, draining for 20s")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	if err := httpSrv.Shutdown(ctx); err != nil {
+		log.Printf("orders: shutdown error: %v", err)
+	}
+}
+
+func recoverMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				log.Printf("orders: panic %v on %s %s", rec, r.Method, r.URL.Path)
+				writeErr(w, http.StatusInternalServerError, "internal")
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *server) routes(mux *http.ServeMux) {
@@ -151,10 +187,21 @@ func (s *server) isTokenRevoked(ctx context.Context, jti string) (bool, error) {
 func (s *server) createOrder(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(userIDKey).(int64)
 
+	// Cap request body + drain on close to prevent slowloris/OOM under
+	// high fan-in. MaxBytesReader returns an error once maxBodyBytes
+	// is exceeded; the drain+close keeps the TCP connection reusable.
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+	defer func() {
+		_, _ = io.Copy(io.Discard, r.Body)
+		_ = r.Body.Close()
+	}()
+
 	var body struct {
 		Items []orderItemInput `json:"items"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&body); err != nil {
 		writeErr(w, http.StatusBadRequest, "invalid body")
 		return
 	}
@@ -237,35 +284,68 @@ func (s *server) createOrder(w http.ResponseWriter, r *http.Request) {
 func (s *server) listOrders(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(userIDKey).(int64)
 
+	// Single LEFT JOIN replaces the previous N+1 (1 query per order for
+	// items). At 20k concurrent users × avg-orders-per-user, the old
+	// path saturated the DB pool and triggered `503 db_unreachable`
+	// cascades through auth's /ready probe.
 	rows, err := s.db.QueryContext(r.Context(),
-		`SELECT id, total_cents, status, created_at FROM orders
-		   WHERE user_id = $1 ORDER BY created_at DESC`, userID)
+		`SELECT o.id, o.total_cents, o.status, o.created_at,
+		        oi.product_id, oi.quantity, oi.price_cents
+		   FROM orders o
+		   LEFT JOIN order_items oi ON oi.order_id = o.id
+		  WHERE o.user_id = $1
+		  ORDER BY o.created_at DESC, o.id, oi.product_id`, userID)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "query failed")
 		return
 	}
 	defer rows.Close()
 
-	out := make([]order, 0, 8)
+	byID := make(map[int64]*order, 16)
+	order_ids := make([]int64, 0, 16)
 	for rows.Next() {
-		o := order{UserID: userID}
-		if err := rows.Scan(&o.ID, &o.TotalCents, &o.Status, &o.CreatedAt); err != nil {
+		var oID int64
+		var total int
+		var status string
+		var createdAt time.Time
+		var pid sql.NullInt64
+		var qty, price sql.NullInt64
+
+		if err := rows.Scan(&oID, &total, &status, &createdAt, &pid, &qty, &price); err != nil {
 			writeErr(w, http.StatusInternalServerError, "scan failed")
 			return
 		}
-		out = append(out, o)
-	}
-	for i := range out {
-		items, err := s.loadItems(r.Context(), out[i].ID)
-		if err != nil {
-			writeErr(w, http.StatusInternalServerError, "item load failed")
-			return
+		o, ok := byID[oID]
+		if !ok {
+			o = &order{
+				ID: oID, UserID: userID, TotalCents: total,
+				Status: status, CreatedAt: createdAt, Items: make([]orderItem, 0, 4),
+			}
+			byID[oID] = o
+			order_ids = append(order_ids, oID)
 		}
-		out[i].Items = items
+		if pid.Valid {
+			o.Items = append(o.Items, orderItem{
+				ProductID:  pid.Int64,
+				Quantity:   int(qty.Int64),
+				PriceCents: int(price.Int64),
+			})
+		}
+	}
+	if err := rows.Err(); err != nil {
+		writeErr(w, http.StatusInternalServerError, "row iteration failed")
+		return
+	}
+
+	out := make([]order, 0, len(order_ids))
+	for _, id := range order_ids {
+		out = append(out, *byID[id])
 	}
 	writeJSON(w, http.StatusOK, out)
 }
 
+// loadItems is retained for createOrder-path tests but no longer called
+// from the hot path. Consider deleting when tests are refactored.
 func (s *server) loadItems(ctx context.Context, orderID int64) ([]orderItem, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT product_id, quantity, price_cents FROM order_items WHERE order_id = $1`, orderID)

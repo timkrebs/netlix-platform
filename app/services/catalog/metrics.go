@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -44,7 +45,22 @@ func metricsMiddleware(next http.Handler) http.Handler {
 		start := time.Now()
 		rec := &metricsRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
-		httpRequests.WithLabelValues(r.Method, r.URL.Path, strconv.Itoa(rec.status)).Inc()
-		httpDuration.WithLabelValues(r.Method, r.URL.Path).Observe(time.Since(start).Seconds())
+		// Normalize parameterized paths so Prometheus label cardinality
+		// stays bounded. Without this, every unique /products/:id
+		// creates a new time series — under 20k RPS the TSDB OOMs.
+		path := normalizePath(r.URL.Path)
+		httpRequests.WithLabelValues(r.Method, path, strconv.Itoa(rec.status)).Inc()
+		httpDuration.WithLabelValues(r.Method, path).Observe(time.Since(start).Seconds())
 	})
+}
+
+func normalizePath(p string) string {
+	switch p {
+	case "/health", "/ready", "/metrics", "/products":
+		return p
+	}
+	if strings.HasPrefix(p, "/products/") {
+		return "/products/:id"
+	}
+	return "/other"
 }

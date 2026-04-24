@@ -35,7 +35,19 @@ func metricsMiddleware(next http.Handler) http.Handler {
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
-		httpRequests.WithLabelValues(r.Method, r.URL.Path, strconv.Itoa(rec.status)).Inc()
-		httpDuration.WithLabelValues(r.Method, r.URL.Path).Observe(time.Since(start).Seconds())
+		// Normalize to a known-path whitelist — anything else collapses
+		// to /other. Stops bots hitting /wp-admin etc. from exploding
+		// Prometheus cardinality.
+		path := normalizePath(r.URL.Path)
+		httpRequests.WithLabelValues(r.Method, path, strconv.Itoa(rec.status)).Inc()
+		httpDuration.WithLabelValues(r.Method, path).Observe(time.Since(start).Seconds())
 	})
+}
+
+func normalizePath(p string) string {
+	switch p {
+	case "/health", "/ready", "/metrics", "/signup", "/login", "/logout", "/me":
+		return p
+	}
+	return "/other"
 }
