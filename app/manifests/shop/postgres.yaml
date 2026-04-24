@@ -48,6 +48,26 @@ spec:
       containers:
         - name: postgres
           image: postgres:16-alpine
+          # -c overrides tune Postgres for the load-test profile. At HPA
+          # peak there are ~40 shop pods, each keeping a pool of up to 20
+          # DB connections — default max_connections=100 is the first
+          # thing that falls over. Shared_buffers + work_mem scaled to the
+          # new pod limits.
+          args:
+            - "-c"
+            - "max_connections=500"
+            - "-c"
+            - "shared_buffers=512MB"
+            - "-c"
+            - "effective_cache_size=1536MB"
+            - "-c"
+            - "work_mem=8MB"
+            - "-c"
+            - "maintenance_work_mem=128MB"
+            - "-c"
+            - "wal_buffers=16MB"
+            - "-c"
+            - "synchronous_commit=off"
           ports:
             - containerPort: 5432
               name: postgres
@@ -63,8 +83,8 @@ spec:
             - secretRef:
                 name: shop-db
           resources:
-            requests: { cpu: 100m, memory: 256Mi }
-            limits:   { cpu: 500m, memory: 512Mi }
+            requests: { cpu: 500m, memory: 1Gi }
+            limits:   { cpu: 2000m, memory: 2Gi }
           readinessProbe:
             exec:
               command: ["pg_isready", "-U", "$(POSTGRES_USER)", "-d", "netlix"]

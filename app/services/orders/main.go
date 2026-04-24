@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -302,10 +303,19 @@ func openDB(dsn string) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxOpenConns(10)
-	db.SetMaxIdleConns(5)
+	db.SetMaxOpenConns(intEnvDefault("DB_MAX_OPEN_CONNS", 25))
+	db.SetMaxIdleConns(intEnvDefault("DB_MAX_IDLE_CONNS", 10))
 	db.SetConnMaxLifetime(5 * time.Minute)
 	return db, nil
+}
+
+func intEnvDefault(k string, d int) int {
+	if v := os.Getenv(k); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
+	}
+	return d
 }
 
 func buildDSN() string {

@@ -67,12 +67,27 @@ resource "kubectl_manifest" "argocd_app" {
         server    = "https://kubernetes.default.svc"
         namespace = var.target_namespace
       }
+      # Let the HPA own Deployment.spec.replicas. Without this, ArgoCD's
+      # selfHeal reconciles back to the Git value every few seconds —
+      # killing HPA-spawned pods seconds after they become Ready (seen
+      # as Pending → ContainerCreating → Terminating → Completed cycles
+      # during load tests).
+      ignoreDifferences = [{
+        group        = "apps"
+        kind         = "Deployment"
+        jsonPointers = ["/spec/replicas"]
+      }]
       syncPolicy = {
         automated = {
           prune    = true
           selfHeal = true
         }
-        syncOptions = ["CreateNamespace=true"]
+        syncOptions = [
+          "CreateNamespace=true",
+          # Don't revert replicas on sync either — belt + braces with
+          # ignoreDifferences above.
+          "RespectIgnoreDifferences=true",
+        ]
       }
     }
   })

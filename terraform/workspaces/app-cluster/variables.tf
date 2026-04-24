@@ -20,25 +20,33 @@ variable "cluster_version" {
 variable "node_instance_types" {
   description = "EC2 instance types for the App EKS node group"
   type        = list(string)
-  default     = ["m6i.large"]
+  # m6i.xlarge = 4 vCPU / 16 GB — bumped from m6i.large (2 vCPU) so a
+  # single node can host more shop-service pods under HPA peak without
+  # triggering Pending state on the scheduler.
+  default = ["m6i.xlarge"]
 }
 
 variable "node_desired_size" {
   description = "Desired number of nodes"
   type        = number
-  default     = 3
+  default     = 4
 }
 
 variable "node_min_size" {
   description = "Minimum number of nodes"
   type        = number
-  default     = 2
+  default     = 3
 }
 
 variable "node_max_size" {
   description = "Maximum number of nodes"
   type        = number
-  default     = 5
+  # Headroom for HPA peak: ~32 shop pods at peak + observability +
+  # argocd + kube-system. With m6i.xlarge, 8 nodes = 32 vCPU.
+  # Cluster Autoscaler isn't installed, so node count is static unless
+  # Terraform bumps desired_size; max_size sets the ceiling if CA is
+  # added later.
+  default = 8
 
   validation {
     condition     = var.node_max_size >= var.node_min_size

@@ -162,8 +162,8 @@ func openDB(dsn string) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxOpenConns(10)
-	db.SetMaxIdleConns(5)
+	db.SetMaxOpenConns(intEnv("DB_MAX_OPEN_CONNS", 25))
+	db.SetMaxIdleConns(intEnv("DB_MAX_IDLE_CONNS", 10))
 	db.SetConnMaxLifetime(5 * time.Minute)
 	return db, nil
 }
