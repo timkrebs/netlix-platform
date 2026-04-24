@@ -15,10 +15,54 @@ resource "kubernetes_namespace" "observability" {
   }
 }
 
+# ─── VSO identity for the observability namespace ────────────────────────
+# VSO 0.9.0 resolves VaultAuth.spec.kubernetes.serviceAccount in the
+# VaultStaticSecret's own namespace (not the VaultAuth's). Without an SA
+# + local VaultAuth here, VSO fails with "ServiceAccount
+# 'vault-secrets-operator' not found" and never syncs the Grafana admin
+# Secret. Mirrors the pattern the shop services use in the `consul`
+# namespace (app/manifests/base/vault-{auth,sa}.yaml).
+
+resource "kubernetes_service_account" "vso_impersonator" {
+  metadata {
+    name      = "vault-secrets-operator-controller-manager"
+    namespace = kubernetes_namespace.observability.metadata[0].name
+  }
+}
+
+resource "kubectl_manifest" "vault_auth_observability" {
+  yaml_body = yamlencode({
+    apiVersion = "secrets.hashicorp.com/v1beta1"
+    kind       = "VaultAuth"
+    metadata = {
+      name      = "default"
+      namespace = kubernetes_namespace.observability.metadata[0].name
+    }
+    spec = {
+      method             = "kubernetes"
+      mount              = "kubernetes"
+      namespace          = var.environment
+      vaultConnectionRef = "vault-secrets-operator-system/default"
+      kubernetes = {
+        role                   = "netlix-vso"
+        serviceAccount         = kubernetes_service_account.vso_impersonator.metadata[0].name
+        tokenExpirationSeconds = 600
+        # "vault" audience matches the Vault role's audience check;
+        # "https://kubernetes.default.svc" is EKS's API-server default
+        # audience, required because Vault calls TokenReview without an
+        # explicit audience and K8s validates against its default.
+        audiences = ["vault", "https://kubernetes.default.svc"]
+      }
+    }
+  })
+
+  depends_on = [kubernetes_service_account.vso_impersonator]
+}
+
 # ─── Grafana admin credentials synced from Vault via VSO ──────────────────
-# VSO connects using the default VaultConnection+VaultAuth installed by the
-# vso component — `secret/netlix/grafana` is readable under the netlix-vso
-# policy (wildcard `secret/data/netlix/*`).
+# Reads `secret/netlix/grafana` in the `dev` Vault namespace via the
+# local VaultAuth above. The `netlix-vso` Vault policy grants read on
+# `secret/data/netlix/*`, which covers this path.
 
 resource "kubectl_manifest" "vault_static_secret_grafana" {
   yaml_body = yamlencode({
@@ -34,6 +78,7 @@ resource "kubectl_manifest" "vault_static_secret_grafana" {
       path         = "netlix/grafana"
       namespace    = var.environment
       refreshAfter = "60s"
+      vaultAuthRef = "default"
       destination = {
         name   = local.grafana_admin_secret
         create = true
@@ -41,7 +86,7 @@ resource "kubectl_manifest" "vault_static_secret_grafana" {
     }
   })
 
-  depends_on = [kubernetes_namespace.observability]
+  depends_on = [kubectl_manifest.vault_auth_observability]
 }
 
 # Give VSO time to reconcile the VaultStaticSecret and materialize the

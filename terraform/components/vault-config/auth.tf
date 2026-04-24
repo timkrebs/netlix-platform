@@ -25,7 +25,7 @@ resource "vault_kubernetes_auth_backend_role" "vso" {
   backend                          = vault_auth_backend.kubernetes.path
   role_name                        = "netlix-vso"
   bound_service_account_names      = ["vault-secrets-operator", "vault-secrets-operator-controller-manager"]
-  bound_service_account_namespaces = ["vault-secrets-operator-system", "consul"]
+  bound_service_account_namespaces = ["vault-secrets-operator-system", "consul", "observability"]
   token_policies                   = [vault_policy.vso.name]
   token_ttl                        = 3600
   # VSO signs SA tokens with audience "vault" by default. Setting the
