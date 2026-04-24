@@ -117,7 +117,9 @@ resource "helm_release" "kube_prometheus_stack" {
 
   values = [yamlencode({
     # Pick up ServiceMonitors / PodMonitors / Rules from any namespace
-    # (Vault in `vault`, shop services + Envoy in `consul`).
+    # (shop services + Envoy in `consul`). Vault runs in a separate EKS
+    # cluster, so it's scraped externally via the ALB (see
+    # additionalScrapeConfigs below).
     prometheus = {
       prometheusSpec = {
         serviceMonitorSelectorNilUsesHelmValues = false
@@ -134,6 +136,28 @@ resource "helm_release" "kube_prometheus_stack" {
             }
           }
         }
+
+        # Cross-cluster scrape of Vault via the public ALB. Vault's
+        # telemetry stanza + `unauthenticated_metrics_access = true` on
+        # the listener (see vault-server/main.tf) let us hit
+        # /v1/sys/metrics without a token. ACM cert is publicly trusted
+        # so no insecure_skip_verify needed. The `vault` label is
+        # forced onto the metric so Grafana's HashiCorp Vault dashboard
+        # (gnetId 12904) picks it up.
+        additionalScrapeConfigs = [{
+          job_name        = "vault-external"
+          scheme          = "https"
+          metrics_path    = "/v1/sys/metrics"
+          params          = { format = ["prometheus"] }
+          scrape_interval = "30s"
+          scrape_timeout  = "10s"
+          static_configs = [{
+            targets = ["vault.${var.environment}.${var.domain}"]
+            labels = {
+              cluster = "vault-${var.environment}"
+            }
+          }]
+        }]
       }
     }
 
@@ -404,52 +428,10 @@ resource "helm_release" "promtail" {
   depends_on = [helm_release.loki]
 }
 
-# ─── Vault ServiceMonitor ─────────────────────────────────────────────────
-# Vault exposes Prometheus metrics at /v1/sys/metrics?format=prometheus.
-# Unauthenticated access is enabled in the listener config (see
-# vault-server/main.tf) so no token is required for scrape.
-
-resource "kubectl_manifest" "vault_servicemonitor" {
-  yaml_body = yamlencode({
-    apiVersion = "monitoring.coreos.com/v1"
-    kind       = "ServiceMonitor"
-    metadata = {
-      name      = "vault"
-      namespace = kubernetes_namespace.observability.metadata[0].name
-      labels = {
-        release = "kps"
-      }
-    }
-    spec = {
-      namespaceSelector = {
-        matchNames = [var.vault_namespace]
-      }
-      selector = {
-        matchLabels = {
-          "app.kubernetes.io/name"     = "vault"
-          "app.kubernetes.io/instance" = "vault"
-          component                    = "server"
-        }
-      }
-      endpoints = [{
-        port     = "https"
-        scheme   = "https"
-        path     = "/v1/sys/metrics"
-        params   = { format = ["prometheus"] }
-        interval = "30s"
-        tlsConfig = {
-          insecureSkipVerify = true
-        }
-        relabelings = [{
-          sourceLabels = ["__meta_kubernetes_pod_name"]
-          targetLabel  = "pod"
-        }]
-      }]
-    }
-  })
-
-  depends_on = [helm_release.kube_prometheus_stack]
-}
+# Vault metrics are scraped cross-cluster via the public ALB using
+# prometheus.prometheusSpec.additionalScrapeConfigs above — Vault runs
+# in a separate EKS cluster (vault-cluster workspace), so in-cluster
+# ServiceMonitor discovery from app-cluster's Prometheus can't reach it.
 
 # ─── Shop services PodMonitor ────────────────────────────────────────────
 # Selects the 5 Go services (web, auth, catalog, orders, gateway) in the
