@@ -1,3 +1,9 @@
+# Sized for the HPA peak in app/manifests/shop/*-hpa.yaml. At max
+# replicas (gateway 20 + auth 15 + catalog 15 + orders 10 + postgres 1)
+# the sum of per-pod limits is ~72 vCPU / 32 Gi. That's intentional
+# overcommit on the 16-vCPU node group — limits are ceilings, not
+# reservations. Scheduler placement is bounded by requests.cpu
+# (peak ~5.5 vCPU) which fits well inside node capacity.
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -5,9 +11,9 @@ metadata:
   namespace: consul
 spec:
   hard:
-    requests.cpu: "4"
-    requests.memory: 4Gi
-    limits.cpu: "8"
-    limits.memory: 8Gi
-    pods: "50"
+    requests.cpu: "14"
+    requests.memory: 16Gi
+    limits.cpu: "80"
+    limits.memory: 48Gi
+    pods: "100"
     services: "20"
