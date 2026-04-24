@@ -11,21 +11,15 @@ module "eks" {
   endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
   endpoint_private_access      = true
 
-  # Explicit non-null compute_config is required for existing clusters
-  # that were originally created without EKS Auto Mode. AWS provider
-  # v6's aws_eks_cluster schema marks compute_config /
-  # kubernetes_network_config.elastic_load_balancing /
-  # storage_config.block_storage as Computed with Default=false, so the
-  # refresh populates them in state. With var.compute_config = null
-  # (v21 default), the module emits none of the three blocks and
-  # Terraform plans to remove them — tripping the Auto Mode triad
-  # validator (validateAutoModeCustomizeDiff). Passing an explicit
-  # `{ enabled = false }` makes v21 emit all three blocks with
-  # enabled=false, so the triad resolves consistently and the update
-  # path sends a well-formed UpdateClusterConfig request.
-  compute_config = {
-    enabled = false
-  }
+  # EKS Auto Mode (compute_config / storage_config /
+  # kubernetes_network_config.elastic_load_balancing) is intentionally
+  # left at the v21 default (compute_config = null, no blocks emitted).
+  # Setting it explicitly forces UpdateClusterConfig calls that AWS
+  # rejects with "No changes needed for EKS Auto Mode configuration
+  # provided" when the cluster is already in the target state. With
+  # v6.15+ provider (aea201c fix) and v21 module, Computed+Default=false
+  # schema semantics let refresh populate these fields from AWS so the
+  # plan stays consistent without our help.
 
   # Allow other workloads in the same VPC to reach this cluster's API on
   # 443 over the private endpoint. Required for cross-cluster Vault
