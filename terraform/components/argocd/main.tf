@@ -67,21 +67,32 @@ resource "kubectl_manifest" "argocd_app" {
         server    = "https://kubernetes.default.svc"
         namespace = var.target_namespace
       }
-      # - /spec/replicas: HPA owns this. Without ignoring, ArgoCD selfHeal
-      #   reconciles back to the Git value every few seconds, killing
-      #   HPA-spawned pods.
-      # - /spec/template/metadata/annotations/vso.secrets.hashicorp.com~1restartedAt:
-      #   VSO writes this annotation to trigger pod restarts on cert
-      #   rotation. Without ignoring, ArgoCD strips it as drift and a
-      #   rollout-storm cycle starts (VSO reapplies → Argo reverts → ...).
-      ignoreDifferences = [{
-        group = "apps"
-        kind  = "Deployment"
-        jsonPointers = [
-          "/spec/replicas",
-          "/spec/template/metadata/annotations/vso.secrets.hashicorp.com~1restartedAt",
-        ]
-      }]
+      # - Deployment /spec/replicas: HPA owns this. Without ignoring, ArgoCD
+      #   selfHeal reconciles back to the Git value every few seconds,
+      #   killing HPA-spawned pods.
+      # - Deployment vso.secrets.hashicorp.com/restartedAt annotation:
+      #   VSO writes this to trigger pod restarts on cert rotation. Without
+      #   ignoring, ArgoCD strips it as drift and a rollout-storm cycle
+      #   starts (VSO reapplies → Argo reverts → ...).
+      # - VaultPKISecret managedFieldsManagers=[vault-secrets-operator]:
+      #   VSO defaults additional spec fields after creation; Argo treats
+      #   them as drift and resyncs in a tight loop. Telling Argo to ignore
+      #   any fields VSO manages breaks the loop.
+      ignoreDifferences = [
+        {
+          group = "apps"
+          kind  = "Deployment"
+          jsonPointers = [
+            "/spec/replicas",
+            "/spec/template/metadata/annotations/vso.secrets.hashicorp.com~1restartedAt",
+          ]
+        },
+        {
+          group                 = "secrets.hashicorp.com"
+          kind                  = "VaultPKISecret"
+          managedFieldsManagers = ["vault-secrets-operator"]
+        },
+      ]
       syncPolicy = {
         automated = {
           prune    = true
