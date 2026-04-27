@@ -103,6 +103,13 @@ resource "kubectl_manifest" "argocd_app" {
           # Don't revert replicas on sync either — belt + braces with
           # ignoreDifferences above.
           "RespectIgnoreDifferences=true",
+          # Server-side apply populates metadata.managedFields, which is
+          # required for the VaultPKISecret managedFieldsManagers ignore
+          # rule above to actually take effect. Without SSA, managedFields
+          # stays empty and Argo cannot tell which fields VSO owns, so
+          # every server-side defaulted field looks like drift and the
+          # app oscillates OutOfSync → Synced → OutOfSync.
+          "ServerSideApply=true",
         ]
       }
     }
