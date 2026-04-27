@@ -53,6 +53,11 @@ resource "tfe_workspace" "this" {
   auto_apply        = false
   queue_all_runs    = false
 
+  # Tags must match the `tags = [...]` selector in each workspace's
+  # versions.tf cloud block, otherwise local `terraform plan` cannot
+  # resolve the workspace via tag-based selection.
+  tag_names = ["netlix", each.value.ws_name]
+
   dynamic "vcs_repo" {
     for_each = var.enable_vcs ? [1] : []
     content {

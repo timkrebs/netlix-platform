@@ -13,7 +13,7 @@ variable "tfc_project_name" {
 variable "enable_vcs" {
   description = "Enable VCS integration for workspaces and Sentinel policy set. Set to false to create workspaces without VCS (configure manually later)."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "github_oauth_token_id" {
