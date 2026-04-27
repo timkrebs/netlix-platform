@@ -16,6 +16,9 @@ spec:
     - name: http
       port: 8080
       targetPort: 8080
+    - name: https
+      port: 8443
+      targetPort: 8443
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -24,6 +27,11 @@ metadata:
   namespace: consul
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: gateway
@@ -39,18 +47,59 @@ spec:
         fsGroup: 65532
         seccompProfile:
           type: RuntimeDefault
+      volumes:
+        - name: gateway-tls
+          secret:
+            secretName: gateway-tls
+            defaultMode: 0400
+        - name: gateway-envoy
+          configMap:
+            name: gateway-envoy
+        - name: envoy-tmp
+          emptyDir: {}
+      initContainers:
+        - name: envoy
+          image: envoyproxy/envoy:v1.31-latest
+          restartPolicy: Always
+          args: ["-c", "/etc/envoy/envoy.yaml", "--service-cluster", "gateway"]
+          ports:
+            - name: https
+              containerPort: 8443
+          volumeMounts:
+            - { name: gateway-tls,   mountPath: /etc/tls,   readOnly: true }
+            - { name: gateway-envoy, mountPath: /etc/envoy, readOnly: true }
+            - { name: envoy-tmp,     mountPath: /tmp }
+          startupProbe:
+            httpGet: { path: /ready, port: 9901, host: 127.0.0.1 }
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet: { path: /ready, port: 9901, host: 127.0.0.1 }
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits:   { cpu: 500m, memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            capabilities:
+              drop: ["ALL"]
       containers:
         - name: gateway
           image: netlix-gateway
           ports:
             - containerPort: 8080
           env:
+            # Outbound calls go through the local Envoy on 127.0.0.1:15001;
+            # Envoy strips the prefix and originates mTLS to the upstream.
             - name: CATALOG_URL
-              value: "http://catalog.consul.svc.cluster.local:8080"
+              value: "http://127.0.0.1:15001/catalog"
             - name: AUTH_URL
-              value: "http://auth.consul.svc.cluster.local:8080"
+              value: "http://127.0.0.1:15001/auth"
             - name: ORDERS_URL
-              value: "http://orders.consul.svc.cluster.local:8080"
+              value: "http://127.0.0.1:15001/orders"
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -67,6 +116,8 @@ spec:
             periodSeconds: 30
 ---
 # Public ALB ingress for the shop. ExternalDNS will create the Route53 A record.
+# ALB → gateway is plain HTTP on 8080 (gateway is the trust boundary; ALB has
+# no client cert). East-west to catalog/auth/orders is mTLS via Envoy.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

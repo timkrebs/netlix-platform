@@ -18,6 +18,8 @@ resources:
   - db-config.yaml
   - storageclass.yaml
   - vault-secrets.yaml
+  - pki-secrets.yaml
+  - envoy-config.yaml
   - postgres.yaml
   - catalog.yaml
   - auth.yaml

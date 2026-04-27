@@ -13,9 +13,9 @@ spec:
   selector:
     app: auth
   ports:
-    - name: http
-      port: 8080
-      targetPort: 8080
+    - name: https
+      port: 8443
+      targetPort: 8443
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -24,6 +24,11 @@ metadata:
   namespace: consul
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: auth
@@ -39,6 +44,45 @@ spec:
         fsGroup: 65532
         seccompProfile:
           type: RuntimeDefault
+      volumes:
+        - name: auth-tls
+          secret:
+            secretName: auth-tls
+            defaultMode: 0400
+        - name: auth-envoy
+          configMap:
+            name: auth-envoy
+        - name: envoy-tmp
+          emptyDir: {}
+      initContainers:
+        - name: envoy
+          image: envoyproxy/envoy:v1.31-latest
+          restartPolicy: Always
+          args: ["-c", "/etc/envoy/envoy.yaml", "--service-cluster", "auth"]
+          ports:
+            - name: https
+              containerPort: 8443
+          volumeMounts:
+            - { name: auth-tls,   mountPath: /etc/tls,   readOnly: true }
+            - { name: auth-envoy, mountPath: /etc/envoy, readOnly: true }
+            - { name: envoy-tmp,  mountPath: /tmp }
+          startupProbe:
+            httpGet: { path: /ready, port: 9901, host: 127.0.0.1 }
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet: { path: /ready, port: 9901, host: 127.0.0.1 }
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits:   { cpu: 500m, memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            capabilities:
+              drop: ["ALL"]
       containers:
         - name: auth
           image: netlix-auth

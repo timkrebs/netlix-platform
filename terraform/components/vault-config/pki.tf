@@ -67,10 +67,14 @@ resource "vault_generic_endpoint" "pki_role_app" {
   data_json = jsonencode({
     allowed_domains  = var.pki_allowed_domains
     allow_subdomains = true
-    max_ttl          = "72h"
+    default_ttl      = "3600"
+    max_ttl          = "3600"
     key_type         = "ec"
     key_bits         = 256
     require_cn       = false
+    server_flag      = true
+    client_flag      = true
     key_usage        = ["DigitalSignature", "KeyAgreement", "KeyEncipherment"]
+    ext_key_usage    = ["ServerAuth", "ClientAuth"]
   })
 }
