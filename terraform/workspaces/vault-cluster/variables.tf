@@ -18,7 +18,10 @@ variable "cluster_version" {
 variable "node_instance_types" {
   description = "EC2 instance types for the Vault EKS node group (small nodes)"
   type        = list(string)
-  default     = ["t3.medium"]
+  # t3.small = 2 vCPU / 2 GB — downsized from t3.medium to reduce AWS
+  # cost. Vault server pods are lightweight; revisit if memory pressure
+  # appears on the Vault statefulset.
+  default = ["t3.small"]
 }
 
 variable "node_desired_size" {
