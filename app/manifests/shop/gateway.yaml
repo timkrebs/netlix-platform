@@ -70,11 +70,11 @@ spec:
             - { name: gateway-envoy, mountPath: /etc/envoy, readOnly: true }
             - { name: envoy-tmp,     mountPath: /tmp }
           startupProbe:
-            httpGet: { path: /ready, port: 9901, host: 127.0.0.1 }
+            httpGet: { path: /ready, port: 9901 }
             failureThreshold: 30
             periodSeconds: 2
           readinessProbe:
-            httpGet: { path: /ready, port: 9901, host: 127.0.0.1 }
+            httpGet: { path: /ready, port: 9901 }
             periodSeconds: 5
           resources:
             requests: { cpu: 50m, memory: 64Mi }
