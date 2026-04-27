@@ -17,7 +17,7 @@ module "vpc" {
   intra_subnets   = local.intra_subnets
 
   enable_nat_gateway   = true
-  single_nat_gateway   = var.environment == "dev"
+  single_nat_gateway   = contains(["dev", "staging"], var.environment)
   enable_dns_hostnames = true
   enable_dns_support   = true
 

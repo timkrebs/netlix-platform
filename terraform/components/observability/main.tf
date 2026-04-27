@@ -359,7 +359,7 @@ resource "helm_release" "loki" {
         chunk_encoding = "snappy"
       }
       limits_config = {
-        retention_period          = "168h"
+        retention_period          = var.loki_retention_period
         allow_structured_metadata = true
         volume_enabled            = true
       }

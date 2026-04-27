@@ -109,6 +109,7 @@ module "monitoring" {
   vpc_flow_log_group_arn = local.flow_log_cloudwatch_log_group_arn
   eks_cluster_name       = module.eks.cluster_name
   alert_email            = var.alert_email
+  log_retention_days     = var.environment == "dev" ? 7 : 14
 }
 
 # ─── In-cluster Observability (Prometheus + Grafana + Loki) ───────────────
@@ -116,10 +117,12 @@ module "monitoring" {
 module "observability" {
   source = "../../components/observability"
 
-  environment     = var.environment
-  domain          = var.base_domain
-  certificate_arn = local.certificate_arn
-  vault_namespace = "vault"
+  environment           = var.environment
+  domain                = var.base_domain
+  certificate_arn       = local.certificate_arn
+  vault_namespace       = "vault"
+  prometheus_retention  = var.environment == "dev" ? "5d" : "15d"
+  loki_retention_period = var.environment == "dev" ? "120h" : "168h"
 
   # VSO must be deployed first so the VaultStaticSecret CRD exists and the
   # default VaultConnection/VaultAuth is ready to sync the Grafana admin

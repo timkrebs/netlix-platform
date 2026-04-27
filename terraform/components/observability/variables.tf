@@ -55,6 +55,12 @@ variable "prometheus_retention" {
   default     = "15d"
 }
 
+variable "loki_retention_period" {
+  description = "How long Loki retains log chunks."
+  type        = string
+  default     = "168h"
+}
+
 variable "prometheus_storage_size" {
   description = "PVC size for Prometheus TSDB."
   type        = string

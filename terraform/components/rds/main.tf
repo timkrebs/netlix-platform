@@ -33,14 +33,14 @@ module "rds" {
   vpc_security_group_ids = [aws_security_group.rds.id]
   publicly_accessible    = false
 
-  backup_retention_period = 7
+  backup_retention_period = var.environment == "dev" ? 3 : 7
   backup_window           = "03:00-04:00"
   maintenance_window      = "Mon:04:00-Mon:05:00"
 
   monitoring_interval                   = 60
   monitoring_role_name                  = "${var.project}-${var.environment}-rds-monitoring"
   create_monitoring_role                = true
-  performance_insights_enabled          = true
+  performance_insights_enabled          = var.environment == "prod"
   performance_insights_retention_period = 7
 
   multi_az            = var.environment != "dev"
