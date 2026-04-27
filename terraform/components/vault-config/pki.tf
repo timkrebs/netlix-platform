@@ -5,7 +5,10 @@ resource "vault_mount" "pki" {
   type                      = "pki"
   description               = "Netlix root PKI"
   default_lease_ttl_seconds = 3600
-  max_lease_ttl_seconds     = 86400
+  # 87600h (10y) — must exceed the intermediate sign TTL (43800h / 5y),
+  # otherwise the mount caps the intermediate's lifetime and certs the
+  # intermediate signs cannot extend past the intermediate's notAfter.
+  max_lease_ttl_seconds = 315360000
 }
 
 resource "vault_pki_secret_backend_root_cert" "root" {
