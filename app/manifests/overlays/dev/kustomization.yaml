@@ -37,3 +37,6 @@ patches:
   target:
     kind: VaultStaticSecret
     name: shop-jwt
+- path: patch-pki-namespace.yaml
+  target:
+    kind: VaultPKISecret

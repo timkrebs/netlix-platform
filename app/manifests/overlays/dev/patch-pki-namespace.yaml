@@ -1,0 +1,6 @@
+# Repoint every VaultPKISecret at the per-env Vault namespace (`dev`).
+# Base manifests use `admin` as a placeholder; this JSON patch applies
+# to all four shop VaultPKISecret resources at once.
+- op: replace
+  path: /spec/namespace
+  value: dev
