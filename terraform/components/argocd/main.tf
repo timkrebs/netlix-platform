@@ -103,13 +103,14 @@ resource "kubectl_manifest" "argocd_app" {
           # Don't revert replicas on sync either — belt + braces with
           # ignoreDifferences above.
           "RespectIgnoreDifferences=true",
-          # Server-side apply populates metadata.managedFields, which is
-          # required for the VaultPKISecret managedFieldsManagers ignore
-          # rule above to actually take effect. Without SSA, managedFields
-          # stays empty and Argo cannot tell which fields VSO owns, so
-          # every server-side defaulted field looks like drift and the
-          # app oscillates OutOfSync → Synced → OutOfSync.
-          "ServerSideApply=true",
+          # Use server-side dry-run for *diffing* only (not for applying).
+          # Without this, Argo computes diffs locally without seeing
+          # server-side defaulted fields (e.g. spec.destination.overwrite
+          # on VaultPKISecret), so every reconcile shows drift on those
+          # defaults and the app oscillates OutOfSync ↔ Synced. Apply
+          # still uses client-side merge (avoids VSO CRD schema gaps that
+          # break ServerSideApply, e.g. refreshAfter not in OpenAPI v3).
+          "ServerSideDiff=true",
         ]
       }
     }
