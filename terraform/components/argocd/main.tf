@@ -67,15 +67,20 @@ resource "kubectl_manifest" "argocd_app" {
         server    = "https://kubernetes.default.svc"
         namespace = var.target_namespace
       }
-      # Let the HPA own Deployment.spec.replicas. Without this, ArgoCD's
-      # selfHeal reconciles back to the Git value every few seconds —
-      # killing HPA-spawned pods seconds after they become Ready (seen
-      # as Pending → ContainerCreating → Terminating → Completed cycles
-      # during load tests).
+      # - /spec/replicas: HPA owns this. Without ignoring, ArgoCD selfHeal
+      #   reconciles back to the Git value every few seconds, killing
+      #   HPA-spawned pods.
+      # - /spec/template/metadata/annotations/vso.secrets.hashicorp.com~1restartedAt:
+      #   VSO writes this annotation to trigger pod restarts on cert
+      #   rotation. Without ignoring, ArgoCD strips it as drift and a
+      #   rollout-storm cycle starts (VSO reapplies → Argo reverts → ...).
       ignoreDifferences = [{
-        group        = "apps"
-        kind         = "Deployment"
-        jsonPointers = ["/spec/replicas"]
+        group = "apps"
+        kind  = "Deployment"
+        jsonPointers = [
+          "/spec/replicas",
+          "/spec/template/metadata/annotations/vso.secrets.hashicorp.com~1restartedAt",
+        ]
       }]
       syncPolicy = {
         automated = {
