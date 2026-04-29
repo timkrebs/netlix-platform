@@ -21,6 +21,12 @@ resource "helm_release" "argocd" {
   }
 
   values = [yamlencode({
+    # ApplicationSet controller is disabled — we don't use ApplicationSets
+    # (only Applications), and its CRD alone is ~2.8 MB which pushed the
+    # cluster over EKS console's 6 MB per-resource-list rendering limit.
+    applicationSet = {
+      enabled = false
+    }
     configs = {
       cm = {
         "kustomize.buildOptions" = "--load-restrictor LoadRestrictionsNone"

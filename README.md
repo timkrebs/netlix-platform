@@ -40,11 +40,11 @@
                     │  Components:           Dependency Graph:        │
                     │    dns             ──── Route53 + ACM           │
                     │    networking      ──── VPC + subnets + NAT     │
-                    │    eks            ◄──── EKS + IRSA + KMS        │
-                    │    hvn_peering    ◄──── HashiCorp Vault ↔ VPC   │
-                    │    vault_config   ◄──── PKI, K8s auth, DB, KV   │
-                    │    vso            ◄──── Vault Secrets Operator  │
-                    │    argocd         ◄──── GitOps delivery         │
+                    │    eks            <──── EKS + IRSA + KMS        │
+                    │    hvn_peering    <──── HashiCorp Vault ↔ VPC   │
+                    │    vault_config   <──── PKI, K8s auth, DB, KV   │
+                    │    vso            <──── Vault Secrets Operator  │
+                    │    argocd         <──── GitOps delivery         │
                     │                                                 │
                     │  Deployments:                                   │
                     │    dev     (10.0.0.0/16, m6i.large, t4g.medium) │
