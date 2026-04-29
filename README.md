@@ -6,7 +6,7 @@
 
 [![Load Test](https://github.com/timkrebs/netlix-platform/actions/workflows/load-test.yaml/badge.svg)](https://github.com/timkrebs/netlix-platform/actions/workflows/load-test.yaml)
 
-**Netlix** is a production-grade reference architecture showcasing HashiCorp technologies in a real-world AWS deployment. It simulates a SaaS startup running its platform on Kubernetes, demonstrating the complete HCP Terraform Stacks workflow — from VCS-driven runs through Sentinel policy checks and cost estimation to automated multi-environment infrastructure provisioning — integrated with HCP Vault Dedicated for secrets management, dynamic database credentials, and PKI certificate issuance.
+**Netlix** is a production-grade reference architecture showcasing HashiCorp technologies in a real-world AWS deployment. It simulates a SaaS startup running its platform on Kubernetes, demonstrating the complete HCP Terraform Stacks workflow — from VCS-driven runs through Sentinel policy checks and cost estimation to automated multi-environment infrastructure provisioning — integrated with HashiCorp Vault Enterprise for secrets management, dynamic database credentials, and PKI certificate issuance.
 
 **Domain:** [netlix.dev](https://netlix.dev)
 
@@ -16,7 +16,7 @@
 |-------|-----------|
 | Infrastructure as Code | HCP Terraform (Stacks) |
 | Policy as Code | Sentinel |
-| Secrets Management | HCP Vault Dedicated |
+| Secrets Management | HashiCorp Vault Enterprise |
 | Secrets Delivery | Vault Secrets Operator (VSO) |
 | GitOps | ArgoCD |
 | Container Orchestration | Amazon EKS |
@@ -40,16 +40,14 @@
                     │  Components:           Dependency Graph:        │
                     │    dns             ──── Route53 + ACM           │
                     │    networking      ──── VPC + subnets + NAT     │
-                    │    eks            ◄──── EKS + IRSA + KMS       │
-                    │    hvn_peering    ◄──── HCP Vault ↔ VPC        │
-                    │    rds            ◄──── PostgreSQL + KMS        │
-                    │    vault_config   ◄──── PKI, K8s auth, DB, KV  │
+                    │    eks            ◄──── EKS + IRSA + KMS        │
+                    │    hvn_peering    ◄──── HashiCorp Vault ↔ VPC   │
+                    │    vault_config   ◄──── PKI, K8s auth, DB, KV   │
                     │    vso            ◄──── Vault Secrets Operator  │
                     │    argocd         ◄──── GitOps delivery         │
                     │                                                 │
                     │  Deployments:                                   │
-                    │    dev     (10.0.0.0/16, m6i.large, t4g.medium)│
-                    │    staging (10.1.0.0/16, m6i.large, m6i.large) │
+                    │    dev     (10.0.0.0/16, m6i.large, t4g.medium) │
                     └─────────────────────────────────────────────────┘
 ```
 
@@ -201,9 +199,3 @@ All credentials use OIDC workload identity or HCP Terraform variable sets — **
 ## License
 
 Private — HashiCorp demo platform.
-
-
-
-For demo purpose, we need to integrate pki tls certs into the demo. I want that the communication between services is secured with TLS and vault issues the certificates and rotates them automatically. We can use Vault PKI engine to issue certificates for our services and then use the Vault Secrets Operator (VSO) to inject those certificates into Kubernetes as secrets. The VSO can also handle automatic rotation of the certificates before they expire, ensuring that our services always have valid TLS certs for secure communication. The certificates should have a TTL of 1h and be renewed at 67% of their lifetime, which means they will be renewed after 40 minutes. This way, we can ensure that our services are always using up-to-date TLS certificates for secure communication.
-
-Analyzing the current state of the Netlix Platform code, make a plan for integrating Vault PKI engine and VSO for TLS certificate management into the app and also vault. Configure the Vaults PKI engine first, then set up the VSO to pull certificates from Vault and inject them into Kubernetes as secrets. Finally, update the application manifests to use these secrets for TLS communication between services. 

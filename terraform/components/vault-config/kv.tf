@@ -56,6 +56,36 @@ resource "vault_kv_secret_v2" "shop_db" {
   })
 }
 
+# ─── Web shop feature flags (KVv2 + VSO dynamic config demo) ─────────────
+# Edited live during demos via `vault kv put` to flip UI behavior in the
+# shop without redeploying. VSO syncs into Secret/shop-feature-flags,
+# which the gateway pod mounts as a file at /etc/shop/flags.json. The
+# gateway's /api/flags handler re-reads the file on demand and the React
+# SPA polls it, so changes propagate without a pod restart.
+#
+# Single KVv2 key whose value is a JSON-encoded blob — VSO templating
+# writes that blob verbatim to the projected file, and atomic file
+# replacement avoids half-written reads.
+
+resource "vault_kv_secret_v2" "shop_feature_flags" {
+  namespace = vault_namespace.env.path_fq
+  mount     = vault_mount.kv.path
+  name      = "netlix/featureflags"
+
+  data_json = jsonencode({
+    "flags.json" = jsonencode({
+      showPromoBanner = false
+      promoText       = "FREE SHIPPING THIS WEEK"
+    })
+  })
+
+  # Terraform owns the initial seed only — demo edits via `vault kv put`
+  # must not be reverted by a future `terraform apply`.
+  lifecycle {
+    ignore_changes = [data_json]
+  }
+}
+
 # ─── Grafana admin credentials ──────────────────────────────────────────
 # Synced into the observability namespace by VSO (VaultStaticSecret in
 # components/observability). Read by the kube-prometheus-stack chart's
