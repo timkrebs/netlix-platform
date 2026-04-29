@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import Hero from '../components/Hero.jsx';
+import PromoBanner from '../components/PromoBanner.jsx';
 import Filters from '../components/Filters.jsx';
 import ProductGrid from '../components/ProductGrid.jsx';
 import useFilters from '../hooks/useFilters.js';
@@ -40,6 +41,7 @@ export default function CatalogPage({
 
   return (
     <>
+      <PromoBanner />
       <Hero filteredCount={filtered.length} totalStock={totalStock} />
       <div className="t-shop-body">
         <Filters

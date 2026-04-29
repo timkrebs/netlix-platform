@@ -11,6 +11,7 @@ import LoginPage from './pages/LoginPage.jsx';
 import OrdersPage from './pages/OrdersPage.jsx';
 import useCart from './hooks/useCart.js';
 import useProducts from './hooks/useProducts.js';
+import { FeatureFlagsProvider } from './hooks/useFeatureFlags.jsx';
 
 function pathToNav(pathname) {
   if (pathname === '/login') return 'login';
@@ -94,19 +95,19 @@ export default function App() {
 
   if (bootstrapping) {
     return (
-      <>
+      <FeatureFlagsProvider>
         <Nav view={view} onNavigate={handleNavigate} cartCount={count} onOpenCart={openCart} />
         <section className="t-page">
           <div className="t-page-empty">
             <div className="t-loading" style={{ margin: 0, fontSize: 14 }}>SYNC…</div>
           </div>
         </section>
-      </>
+      </FeatureFlagsProvider>
     );
   }
 
   return (
-    <>
+    <FeatureFlagsProvider>
       <Nav view={view} onNavigate={handleNavigate} cartCount={count} onOpenCart={openCart} />
       {user && (
         <div className="t-user-bar">
@@ -184,7 +185,7 @@ export default function App() {
         productsLoading={productsCtx.loading}
         setQty={setQty}
       />
-    </>
+    </FeatureFlagsProvider>
   );
 }
 

@@ -1,0 +1,42 @@
+# Vault Secrets Operator wiring for the shop's feature flags.
+#
+# This is the third VSO use case in the shop, complementing:
+#   - vault-secrets.yaml (shop-db, shop-jwt — env-var secrets that
+#     trigger a rolling restart of consumer Deployments on change)
+#   - pki-secrets.yaml   (TLS certs for east-west mTLS via Envoy)
+#
+# Unlike those two, this Secret is consumed as a *file mounted into the
+# gateway pod* (see gateway.yaml — /etc/shop/flags.json) and is
+# DELIBERATELY NOT listed under rolloutRestartTargets. Changes published
+# by VSO propagate via in-place kubelet projection refresh; the gateway
+# re-reads the file on demand and the React SPA polls /api/flags. End
+# result: edit Vault → UI updates in ~30–90s without any pod restart.
+#
+# Vault namespace defaults to `admin` here and is patched per-env in
+# overlays/{dev,staging}/patch-shop-feature-flags-namespace.yaml.
+
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: shop-feature-flags
+  namespace: consul
+spec:
+  vaultAuthRef: default
+  namespace: admin
+  mount: secret
+  type: kv-v2
+  path: netlix/featureflags
+  refreshAfter: 30s
+  destination:
+    name: shop-feature-flags
+    create: true
+    transformation:
+      excludeRaw: true
+      templates:
+        # The KVv2 key is literally "flags.json" — the dot is part of the
+        # key name, so `index` is required (`.Secrets.flags.json` would
+        # be parsed as `Secrets.flags` then `.json` and fail to render).
+        flags.json:
+          text: '{{ index .Secrets "flags.json" }}'
+  # Intentionally NO rolloutRestartTargets — the whole point of this
+  # secret is to update without restarting the gateway pod.

@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -42,6 +43,7 @@ func main() {
 	ordersURL := mustURL("ORDERS_URL", "http://orders:8080")
 	staticDir := envDefault("STATIC_DIR", "/var/www/spa")
 	addr := envDefault("LISTEN_ADDR", "0.0.0.0:8080")
+	flagsPath := envDefault("FEATURE_FLAGS_PATH", "/etc/shop/flags.json")
 
 	mux := http.NewServeMux()
 
@@ -58,6 +60,10 @@ func main() {
 	mux.Handle("/api/auth/", proxy(authURL, "/api/auth"))
 	// /api/orders/* → orders service
 	mux.Handle("/api/orders/", proxy(ordersURL, "/api/orders"))
+
+	// /api/flags → KVv2-backed feature flags read from a VSO-projected
+	// file. No auth, short cache, defaults on read errors.
+	mux.HandleFunc("GET /api/flags", flagsHandler(flagsPath))
 
 	mux.Handle("/metrics", metricsHandler())
 	mux.Handle("/", spaHandler(staticDir))
@@ -181,4 +187,67 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+// flagsHandler serves the contents of the VSO-projected feature-flag
+// file with a short in-memory cache. The whole point of this endpoint
+// is to make Vault → file → API → SPA propagation observable without
+// restarting the pod, so:
+//   - Cache TTL is intentionally short (5s) — caps load if the SPA
+//     poll goes wild but small enough that the demo "feels" instant
+//     once the file has been refreshed by the kubelet.
+//   - Read failures and invalid JSON do NOT 500 — we serve a
+//     conservative default so the UI keeps working if VSO is mid-sync,
+//     the file is half-written, or the volume isn't mounted.
+//   - We validate JSON before caching to avoid serving (and caching) a
+//     half-written read.
+func flagsHandler(path string) http.HandlerFunc {
+	const ttl = 5 * time.Second
+	defaultBody := []byte(`{"showPromoBanner":false,"promoText":""}`)
+
+	var (
+		mu       sync.RWMutex
+		cached   []byte
+		cachedAt time.Time
+	)
+
+	read := func() []byte {
+		mu.RLock()
+		if time.Since(cachedAt) < ttl && cached != nil {
+			b := cached
+			mu.RUnlock()
+			return b
+		}
+		mu.RUnlock()
+
+		mu.Lock()
+		defer mu.Unlock()
+		if time.Since(cachedAt) < ttl && cached != nil {
+			return cached
+		}
+
+		body, err := os.ReadFile(path)
+		if err != nil {
+			log.Printf("gateway: flags read failed (%s), serving defaults: %v", path, err)
+			cached = defaultBody
+			cachedAt = time.Now()
+			return cached
+		}
+		if !json.Valid(body) {
+			log.Printf("gateway: flags file %s is not valid JSON (likely mid-write), serving defaults", path)
+			cached = defaultBody
+			cachedAt = time.Now()
+			return cached
+		}
+		cached = body
+		cachedAt = time.Now()
+		return cached
+	}
+
+	return func(w http.ResponseWriter, _ *http.Request) {
+		body := read()
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "max-age=5, public")
+		_, _ = w.Write(body)
+	}
 }

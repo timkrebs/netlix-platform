@@ -32,6 +32,10 @@ patches:
     target:
       kind: VaultStaticSecret
       name: shop-jwt
+  - path: patch-shop-feature-flags-namespace.yaml
+    target:
+      kind: VaultStaticSecret
+      name: shop-feature-flags
   - path: patch-shop-ingress.yaml
     target:
       kind: Ingress

@@ -18,6 +18,7 @@ resources:
   - db-config.yaml
   - storageclass.yaml
   - vault-secrets.yaml
+  - feature-flags.yaml
   - pki-secrets.yaml
   - envoy-config.yaml
   - postgres.yaml

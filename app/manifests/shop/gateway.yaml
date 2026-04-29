@@ -57,6 +57,18 @@ spec:
             name: gateway-envoy
         - name: envoy-tmp
           emptyDir: {}
+        # KVv2-backed feature flags. Plain `secret:` volume (no subPath)
+        # so kubelet refreshes the file in place when VSO updates the
+        # Secret — gateway pod stays up across flag changes.
+        # 0444 (world-readable) because the gateway runs as nonroot UID
+        # 65532; 0400 would EACCES.
+        - name: shop-feature-flags
+          secret:
+            secretName: shop-feature-flags
+            defaultMode: 0444
+            items:
+              - key: flags.json
+                path: flags.json
       initContainers:
         - name: envoy
           image: envoyproxy/envoy:v1.31-latest
@@ -100,6 +112,12 @@ spec:
               value: "http://127.0.0.1:15001/auth"
             - name: ORDERS_URL
               value: "http://127.0.0.1:15001/orders"
+            - name: FEATURE_FLAGS_PATH
+              value: /etc/shop/flags.json
+          volumeMounts:
+            - name: shop-feature-flags
+              mountPath: /etc/shop
+              readOnly: true
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
