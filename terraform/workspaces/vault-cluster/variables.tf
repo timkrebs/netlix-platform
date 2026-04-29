@@ -25,21 +25,21 @@ variable "node_instance_types" {
 }
 
 variable "node_desired_size" {
-  description = "Desired number of nodes"
+  description = "Desired number of nodes. 4 (was 3) — t3.small caps at 11 pods/node, and a 3-node cluster runs out of slots once you stack 5 Vault replicas + cert-manager + ALB controller + external-dns + ebs-csi + coredns + aws-node + kube-proxy + Promtail DaemonSet (1 per node). One extra node gives Promtail's third replica somewhere to schedule and leaves Vault some memory headroom."
   type        = number
-  default     = 3
+  default     = 4
 }
 
 variable "node_min_size" {
-  description = "Minimum number of nodes"
+  description = "Minimum number of nodes. Kept aligned with desired_size so the node group never scales below the floor under transient pressure."
   type        = number
-  default     = 3
+  default     = 4
 }
 
 variable "node_max_size" {
   description = "Maximum number of nodes"
   type        = number
-  default     = 5
+  default     = 6
 
   validation {
     condition     = var.node_max_size >= var.node_min_size
