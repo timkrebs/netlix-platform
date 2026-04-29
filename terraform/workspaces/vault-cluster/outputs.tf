@@ -37,3 +37,13 @@ output "admin_username" {
   description = "Username of the userpass admin user"
   value       = var.username
 }
+
+# ─── Cross-cluster audit log shipping ─────────────────────────────────────
+# Consumed by the app-cluster workspace via tfe_outputs (see
+# workspaces/app-cluster/data.tf and main.tf observability module call).
+
+output "loki_ingest_password" {
+  description = "Basic auth password Promtail (vault cluster) uses to push to loki-gateway (app cluster). Read by app-cluster workspace via tfe_outputs."
+  value       = random_password.loki_ingest.result
+  sensitive   = true
+}

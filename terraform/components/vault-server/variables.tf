@@ -72,3 +72,28 @@ variable "storage_class" {
   type        = string
   default     = "gp2"
 }
+
+# ─── Promtail (Vault audit log shipper → app-cluster Loki) ────────────────
+
+variable "promtail_chart_version" {
+  description = "grafana/promtail chart version. Pinned to match the version on the app cluster for label/parsing parity."
+  type        = string
+  default     = "6.16.6"
+}
+
+variable "loki_ingest_endpoint" {
+  description = "URL where Promtail pushes log batches. Points at the app-cluster's loki-gateway ALB ingress."
+  type        = string
+}
+
+variable "loki_ingest_username" {
+  description = "Basic auth username for the loki-gateway ingest endpoint."
+  type        = string
+  default     = "vault-cluster"
+}
+
+variable "loki_ingest_password" {
+  description = "Basic auth password matching the secret in app-cluster's observability namespace."
+  type        = string
+  sensitive   = true
+}

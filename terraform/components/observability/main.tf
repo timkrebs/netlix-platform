@@ -317,6 +317,26 @@ resource "helm_release" "kube_prometheus_stack" {
   ]
 }
 
+# ─── Loki cross-cluster ingest credentials ───────────────────────────────
+# The loki-gateway nginx accepts pushes from external Promtail instances
+# (currently: vault-cluster's Promtail shipping Vault audit logs). Basic
+# auth on the gateway authenticates those pushes; in-cluster query traffic
+# (Grafana → loki-gateway) bypasses auth via the chart's optional path-based
+# allow rule. Password is generated in vault-cluster workspace and read here
+# via a tfe_outputs lookup (see workspaces/app-cluster/data.tf).
+
+resource "kubernetes_secret" "loki_gateway_basicauth" {
+  metadata {
+    name      = "loki-gateway-basicauth"
+    namespace = kubernetes_namespace.observability.metadata[0].name
+  }
+  data = {
+    username = var.loki_ingest_username
+    password = var.loki_ingest_password
+  }
+  type = "Opaque"
+}
+
 # ─── Loki (single-binary, filesystem backend on gp3 PVC) ──────────────────
 
 resource "helm_release" "loki" {
@@ -390,8 +410,40 @@ resource "helm_release" "loki" {
     bloomGateway   = { replicas = 0 }
 
     # Keep the chart-managed Gateway (nginx) as the single entry point.
+    # Basic auth protects the public ingest endpoint that vault-cluster's
+    # Promtail uses to ship audit logs cross-cluster. In-cluster query
+    # traffic (Grafana → loki-gateway via service DNS) skips the ingress
+    # entirely and so isn't subject to basic auth — only external POSTs
+    # via the ALB are challenged.
     gateway = {
       enabled = true
+      basicAuth = {
+        enabled        = true
+        existingSecret = kubernetes_secret.loki_gateway_basicauth.metadata[0].name
+      }
+      ingress = {
+        enabled          = true
+        ingressClassName = "alb"
+        hosts = [{
+          host = "loki-ingest.${var.environment}.${var.domain}"
+          paths = [{
+            path     = "/"
+            pathType = "Prefix"
+          }]
+        }]
+        annotations = {
+          "alb.ingress.kubernetes.io/scheme"           = "internet-facing"
+          "alb.ingress.kubernetes.io/target-type"      = "ip"
+          "alb.ingress.kubernetes.io/certificate-arn"  = var.certificate_arn
+          "alb.ingress.kubernetes.io/listen-ports"     = "[{\"HTTPS\":443},{\"HTTP\":80}]"
+          "alb.ingress.kubernetes.io/ssl-redirect"     = "443"
+          "alb.ingress.kubernetes.io/backend-protocol" = "HTTP"
+          # Loki gateway exposes /ready on port 8080 — anything under /
+          # would 401 with basic auth on, breaking ALB target health.
+          "alb.ingress.kubernetes.io/healthcheck-path" = "/ready"
+          "external-dns.alpha.kubernetes.io/hostname"  = "loki-ingest.${var.environment}.${var.domain}"
+        }
+      }
     }
 
     # Disable test pods — they block on wait=true and add no value.
@@ -405,7 +457,10 @@ resource "helm_release" "loki" {
     resultsCache = { enabled = false }
   })]
 
-  depends_on = [kubernetes_namespace.observability]
+  depends_on = [
+    kubernetes_namespace.observability,
+    kubernetes_secret.loki_gateway_basicauth,
+  ]
 }
 
 # ─── Promtail (node-level log shipper → Loki) ─────────────────────────────
@@ -601,6 +656,222 @@ resource "kubernetes_config_map" "netlix_shop_dashboard" {
             refId = "A"
           }]
           options = { showTime = true, wrapLogMessage = true }
+        },
+      ]
+    })
+  }
+
+  depends_on = [helm_release.kube_prometheus_stack]
+}
+
+# ─── Vault audit log dashboard ────────────────────────────────────────────
+# Loki LogQL queries built around the labels Promtail extracts from Vault's
+# audit JSON (see components/vault-server/promtail.tf pipeline_stages):
+#
+#   audit_type    request | response
+#   mount_type    kv | kubernetes | pki | system | identity | ...
+#   operation     read | update | list | delete | create
+#   has_error     true | false
+#
+#   Plus structured fields (extracted via `| json` in queries):
+#     display_name, vault_path, vault_namespace_path, error
+#
+# Dashboard auto-loaded by Grafana sidecar via the grafana_dashboard=1 label.
+
+resource "kubernetes_config_map" "vault_audit_dashboard" {
+  metadata {
+    name      = "netlix-vault-audit-dashboard"
+    namespace = kubernetes_namespace.observability.metadata[0].name
+    labels = {
+      grafana_dashboard = "1"
+    }
+  }
+
+  data = {
+    "vault-audit.json" = jsonencode({
+      title         = "Vault Audit"
+      uid           = "vault-audit"
+      schemaVersion = 38
+      timezone      = "browser"
+      time          = { from = "now-1h", to = "now" }
+      refresh       = "30s"
+      tags          = ["netlix", "vault", "audit", "security"]
+      templating = {
+        list = [
+          {
+            name       = "mount_type"
+            label      = "Mount type"
+            type       = "query"
+            datasource = { type = "loki", uid = "loki" }
+            query = {
+              label = "mount_type"
+              type  = 1
+            }
+            refresh    = 2
+            includeAll = true
+            multi      = true
+          },
+          {
+            name       = "operation"
+            label      = "Operation"
+            type       = "query"
+            datasource = { type = "loki", uid = "loki" }
+            query = {
+              label = "operation"
+              type  = 1
+            }
+            refresh    = 2
+            includeAll = true
+            multi      = true
+          },
+        ]
+      }
+      panels = [
+        # ── Row 1: top-line stats ──
+        {
+          id         = 1
+          type       = "stat"
+          title      = "Audit events / sec"
+          gridPos    = { x = 0, y = 0, w = 6, h = 4 }
+          datasource = { type = "loki", uid = "loki" }
+          targets = [{
+            expr  = "sum(rate({namespace=\"vault\", container=\"vault\", audit_type=~\"request|response\", mount_type=~\"$mount_type\", operation=~\"$operation\"}[1m]))"
+            refId = "A"
+          }]
+          options = {
+            colorMode     = "value"
+            graphMode     = "area"
+            reduceOptions = { calcs = ["lastNotNull"] }
+          }
+          fieldConfig = {
+            defaults = { unit = "ops" }
+          }
+        },
+        {
+          id         = 2
+          type       = "stat"
+          title      = "Errors / sec"
+          gridPos    = { x = 6, y = 0, w = 6, h = 4 }
+          datasource = { type = "loki", uid = "loki" }
+          targets = [{
+            expr  = "sum(rate({namespace=\"vault\", container=\"vault\", has_error=\"true\", mount_type=~\"$mount_type\", operation=~\"$operation\"}[1m]))"
+            refId = "A"
+          }]
+          options = {
+            colorMode     = "value"
+            graphMode     = "area"
+            reduceOptions = { calcs = ["lastNotNull"] }
+          }
+          fieldConfig = {
+            defaults = {
+              unit = "ops"
+              thresholds = {
+                mode = "absolute"
+                steps = [
+                  { color = "green", value = null },
+                  { color = "red", value = 0.1 },
+                ]
+              }
+            }
+          }
+        },
+        {
+          id         = 3
+          type       = "stat"
+          title      = "Distinct identities (1h)"
+          gridPos    = { x = 12, y = 0, w = 6, h = 4 }
+          datasource = { type = "loki", uid = "loki" }
+          targets = [{
+            expr  = "count(count by(display_name) (count_over_time({namespace=\"vault\", container=\"vault\", audit_type=\"response\"} | json [1h])))"
+            refId = "A"
+          }]
+          options = {
+            colorMode     = "value"
+            reduceOptions = { calcs = ["lastNotNull"] }
+          }
+        },
+        {
+          id         = 4
+          type       = "stat"
+          title      = "Distinct vault paths (1h)"
+          gridPos    = { x = 18, y = 0, w = 6, h = 4 }
+          datasource = { type = "loki", uid = "loki" }
+          targets = [{
+            expr  = "count(count by(vault_path) (count_over_time({namespace=\"vault\", container=\"vault\", audit_type=\"response\"} | json [1h])))"
+            refId = "A"
+          }]
+          options = {
+            colorMode     = "value"
+            reduceOptions = { calcs = ["lastNotNull"] }
+          }
+        },
+        # ── Row 2: time series ──
+        {
+          id         = 5
+          type       = "timeseries"
+          title      = "Events per second by mount type"
+          gridPos    = { x = 0, y = 4, w = 12, h = 8 }
+          datasource = { type = "loki", uid = "loki" }
+          targets = [{
+            expr         = "sum by (mount_type) (rate({namespace=\"vault\", container=\"vault\", audit_type=\"response\", operation=~\"$operation\"}[1m]))"
+            legendFormat = "{{mount_type}}"
+            refId        = "A"
+          }]
+        },
+        {
+          id         = 6
+          type       = "timeseries"
+          title      = "Events per second by operation"
+          gridPos    = { x = 12, y = 4, w = 12, h = 8 }
+          datasource = { type = "loki", uid = "loki" }
+          targets = [{
+            expr         = "sum by (operation) (rate({namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\"}[1m]))"
+            legendFormat = "{{operation}}"
+            refId        = "A"
+          }]
+        },
+        # ── Row 3: top-N tables ──
+        {
+          id         = 7
+          type       = "barchart"
+          title      = "Top identities (last 1h)"
+          gridPos    = { x = 0, y = 12, w = 12, h = 8 }
+          datasource = { type = "loki", uid = "loki" }
+          targets = [{
+            expr         = "topk(10, sum by(display_name) (count_over_time({namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\", operation=~\"$operation\"} | json [1h])))"
+            legendFormat = "{{display_name}}"
+            refId        = "A"
+          }]
+        },
+        {
+          id         = 8
+          type       = "barchart"
+          title      = "Top vault paths (last 1h)"
+          gridPos    = { x = 12, y = 12, w = 12, h = 8 }
+          datasource = { type = "loki", uid = "loki" }
+          targets = [{
+            expr         = "topk(10, sum by(vault_path) (count_over_time({namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\", operation=~\"$operation\"} | json [1h])))"
+            legendFormat = "{{vault_path}}"
+            refId        = "A"
+          }]
+        },
+        # ── Row 4: live tail ──
+        {
+          id         = 9
+          type       = "logs"
+          title      = "Live audit tail"
+          gridPos    = { x = 0, y = 20, w = 24, h = 12 }
+          datasource = { type = "loki", uid = "loki" }
+          targets = [{
+            expr  = "{namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\", operation=~\"$operation\"} | json | line_format \"{{.operation}} {{.vault_path}} ({{.display_name}})\""
+            refId = "A"
+          }]
+          options = {
+            showTime       = true
+            wrapLogMessage = true
+            sortOrder      = "Descending"
+            dedupStrategy  = "none"
+          }
         },
       ]
     })

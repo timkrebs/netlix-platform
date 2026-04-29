@@ -29,4 +29,14 @@ locals {
   # environment's Vault namespace. Falls back to "" if vault-cluster
   # hasn't yet been re-applied with the entity resource.
   admin_entity_id = try(data.tfe_outputs.vault_cluster.values.admin_entity_id, "")
+
+  # Basic auth password the loki-gateway requires from vault-cluster's
+  # Promtail. Sourced from random_password in the vault-cluster workspace
+  # (single source of truth — the password is generated where Promtail
+  # consumes it). try() lets initial bootstrap succeed before vault-cluster
+  # has been re-applied with the loki shipping outputs.
+  loki_ingest_password = try(
+    nonsensitive(data.tfe_outputs.vault_cluster.values.loki_ingest_password),
+    "",
+  )
 }

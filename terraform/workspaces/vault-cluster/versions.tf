@@ -50,6 +50,10 @@ terraform {
       source  = "hashicorp/null"
       version = "~> 3.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
     cloudinit = {
       source  = "hashicorp/cloudinit"
       version = "~> 2.0"

@@ -78,3 +78,27 @@ variable "loki_storage_size" {
   type        = string
   default     = "20Gi"
 }
+
+# ─── Loki cross-cluster ingest (vault-cluster Promtail → app-cluster Loki) ─
+
+variable "loki_ingest_username" {
+  description = "Basic auth username accepted by the loki-gateway for cross-cluster log ingest."
+  type        = string
+  default     = "vault-cluster"
+}
+
+variable "loki_ingest_password" {
+  description = "Basic auth password accepted by the loki-gateway for cross-cluster log ingest. Must match the password configured for Promtail on the vault cluster (see vault-cluster workspace random_password.loki_ingest)."
+  type        = string
+  sensitive   = true
+
+  # Refuse to apply with a blank password — that would silently expose the
+  # public loki-ingest ingress with no auth. On a fresh bootstrap this
+  # forces the correct apply order: vault-cluster must be applied first
+  # so its random_password is generated, then app-cluster picks it up
+  # via tfe_outputs.
+  validation {
+    condition     = length(var.loki_ingest_password) >= 16
+    error_message = "loki_ingest_password must be at least 16 chars. On a fresh bootstrap, apply the vault-cluster workspace first — it generates the password and exposes it as an output that this workspace reads via tfe_outputs."
+  }
+}

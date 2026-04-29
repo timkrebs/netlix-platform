@@ -124,6 +124,13 @@ module "observability" {
   prometheus_retention  = var.environment == "dev" ? "5d" : "15d"
   loki_retention_period = var.environment == "dev" ? "120h" : "168h"
 
+  # Cross-cluster Loki ingest — accept Promtail pushes from vault-cluster
+  # over the public ALB. Password is generated in vault-cluster (random_password
+  # in workspaces/vault-cluster/main.tf), exposed via output, and read
+  # cross-workspace through tfe_outputs in data.tf. Apply order: vault-cluster
+  # first → app-cluster picks up the value on its next plan.
+  loki_ingest_password = local.loki_ingest_password
+
   # VSO must be deployed first so the VaultStaticSecret CRD exists and the
   # default VaultConnection/VaultAuth is ready to sync the Grafana admin
   # secret. vault_config must exist so `secret/netlix/grafana` is populated.
