@@ -11,16 +11,16 @@ resources:
 images:
 - name: netlix-auth
   newName: ghcr.io/timkrebs/netlix-platform/auth
-  newTag: dev-2d9c2c9cab9475d5459c41ca64d6f7a86c8ddf3e
+  newTag: dev-0e470cefbc45d8481b3642520f17e84c40a84e66
 - name: netlix-catalog
   newName: ghcr.io/timkrebs/netlix-platform/catalog
-  newTag: dev-2d9c2c9cab9475d5459c41ca64d6f7a86c8ddf3e
+  newTag: dev-0e470cefbc45d8481b3642520f17e84c40a84e66
 - name: netlix-gateway
   newName: ghcr.io/timkrebs/netlix-platform/gateway
-  newTag: dev-2d9c2c9cab9475d5459c41ca64d6f7a86c8ddf3e
+  newTag: dev-0e470cefbc45d8481b3642520f17e84c40a84e66
 - name: netlix-orders
   newName: ghcr.io/timkrebs/netlix-platform/orders
-  newTag: dev-2d9c2c9cab9475d5459c41ca64d6f7a86c8ddf3e
+  newTag: dev-0e470cefbc45d8481b3642520f17e84c40a84e66
 
 # Patch the Vault-namespace fields on the shop's VSO resources to point
 # at the per-environment Vault namespace (default in base is `admin`).
