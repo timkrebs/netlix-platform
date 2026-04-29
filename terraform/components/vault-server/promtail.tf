@@ -40,8 +40,17 @@ resource "helm_release" "promtail" {
   repository = "https://grafana.github.io/helm-charts"
   chart      = "promtail"
   version    = var.promtail_chart_version
-  wait       = true
-  timeout    = 300
+  # `wait = false` is intentional. Promtail is a DaemonSet on a small,
+  # capacity-constrained cluster (t3.small caps at 11 pods/node) where
+  # the rolling update can stall if the next replacement pod can't
+  # immediately schedule. Waiting blocks the apply on a non-critical
+  # log-shipper that has no synchronous downstream consumer — the
+  # DaemonSet eventually converges (or surfaces capacity issues that
+  # are addressed separately, e.g. via VPC CNI prefix delegation or a
+  # node refresh). With `wait = true` the apply timed out at 5 min
+  # because the third pod was Pending behind a maxUnavailable=1 stall.
+  wait    = false
+  timeout = 600
 
   values = [yamlencode({
     # Mount the credentials secret as a file at /etc/promtail-auth/password.
