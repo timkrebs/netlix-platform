@@ -40,11 +40,6 @@ variable "node_max_size" {
   description = "Maximum number of nodes"
   type        = number
   default     = 6
-
-  validation {
-    condition     = var.node_max_size >= var.node_min_size
-    error_message = "node_max_size must be greater than or equal to node_min_size."
-  }
 }
 
 variable "cluster_endpoint_public_access_cidrs" {
