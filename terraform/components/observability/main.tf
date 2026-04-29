@@ -229,13 +229,23 @@ resource "helm_release" "kube_prometheus_stack" {
       }
 
       # Loki as an additional datasource alongside the stack's default Prometheus.
+      # Uses basic auth — every loki-gateway path except "/" is now
+      # auth-gated (so external Promtail clients on the vault cluster
+      # can push). Grafana's queries hit the same gateway and need the
+      # same credentials. Same username/password the chart configures
+      # on the gateway side.
       additionalDataSources = [
         {
-          name      = "Loki"
-          type      = "loki"
-          url       = "http://loki-gateway.${kubernetes_namespace.observability.metadata[0].name}.svc.cluster.local"
-          access    = "proxy"
-          isDefault = false
+          name          = "Loki"
+          type          = "loki"
+          url           = "http://loki-gateway.${kubernetes_namespace.observability.metadata[0].name}.svc.cluster.local"
+          access        = "proxy"
+          isDefault     = false
+          basicAuth     = true
+          basicAuthUser = var.loki_ingest_username
+          secureJsonData = {
+            basicAuthPassword = var.loki_ingest_password
+          }
         }
       ]
 
@@ -317,27 +327,18 @@ resource "helm_release" "kube_prometheus_stack" {
   ]
 }
 
-# ─── Loki cross-cluster ingest credentials ───────────────────────────────
-# The loki-gateway nginx accepts pushes from external Promtail instances
-# (currently: vault-cluster's Promtail shipping Vault audit logs). Basic
-# auth on the gateway authenticates those pushes; in-cluster query traffic
-# (Grafana → loki-gateway) bypasses auth via the chart's optional path-based
-# allow rule. Password is generated in vault-cluster workspace and read here
-# via a tfe_outputs lookup (see workspaces/app-cluster/data.tf).
-
-resource "kubernetes_secret" "loki_gateway_basicauth" {
-  metadata {
-    name      = "loki-gateway-basicauth"
-    namespace = kubernetes_namespace.observability.metadata[0].name
-  }
-  data = {
-    username = var.loki_ingest_username
-    password = var.loki_ingest_password
-  }
-  type = "Opaque"
-}
-
 # ─── Loki (single-binary, filesystem backend on gp3 PVC) ──────────────────
+# Basic auth on the gateway is configured directly via the chart's
+# gateway.basicAuth.username/password values (see helm release below).
+# The chart renders these into a chart-managed Secret with a `.htpasswd`
+# key in bcrypt format — which is what nginx's auth_basic_user_file
+# directive actually expects. (We previously tried managing this Secret
+# ourselves with separate `username`/`password` keys; nginx loads the
+# secret as a flat htpasswd file at /etc/nginx/secrets/.htpasswd, found
+# no valid entries, and 403'd every request.)
+#
+# Password is generated in vault-cluster workspace and read here via a
+# tfe_outputs lookup (see workspaces/app-cluster/data.tf).
 
 resource "helm_release" "loki" {
   name       = "loki"
@@ -412,14 +413,18 @@ resource "helm_release" "loki" {
     # Keep the chart-managed Gateway (nginx) as the single entry point.
     # Basic auth protects the public ingest endpoint that vault-cluster's
     # Promtail uses to ship audit logs cross-cluster. In-cluster query
-    # traffic (Grafana → loki-gateway via service DNS) skips the ingress
-    # entirely and so isn't subject to basic auth — only external POSTs
-    # via the ALB are challenged.
+    # traffic (Grafana → loki-gateway via service DNS) is also challenged
+    # by basic auth — Grafana's datasource will be configured with the
+    # same credentials.
     gateway = {
       enabled = true
       basicAuth = {
-        enabled        = true
-        existingSecret = kubernetes_secret.loki_gateway_basicauth.metadata[0].name
+        enabled = true
+        # Chart renders username/password into a managed Secret at
+        # `<release>-loki-gateway` with a `.htpasswd` key (bcrypt-hashed),
+        # mounted by nginx at /etc/nginx/secrets/.htpasswd.
+        username = var.loki_ingest_username
+        password = var.loki_ingest_password
       }
       ingress = {
         enabled          = true
@@ -438,9 +443,10 @@ resource "helm_release" "loki" {
           "alb.ingress.kubernetes.io/listen-ports"     = "[{\"HTTPS\":443},{\"HTTP\":80}]"
           "alb.ingress.kubernetes.io/ssl-redirect"     = "443"
           "alb.ingress.kubernetes.io/backend-protocol" = "HTTP"
-          # Loki gateway exposes /ready on port 8080 — anything under /
-          # would 401 with basic auth on, breaking ALB target health.
-          "alb.ingress.kubernetes.io/healthcheck-path" = "/ready"
+          # The chart's nginx ONLY serves "/" without basic auth (returns
+          # "OK" 200). Every other path requires auth — including /ready.
+          # Pointing the ALB healthcheck at "/" keeps targets healthy.
+          "alb.ingress.kubernetes.io/healthcheck-path" = "/"
           "external-dns.alpha.kubernetes.io/hostname"  = "loki-ingest.${var.environment}.${var.domain}"
         }
       }
@@ -457,10 +463,7 @@ resource "helm_release" "loki" {
     resultsCache = { enabled = false }
   })]
 
-  depends_on = [
-    kubernetes_namespace.observability,
-    kubernetes_secret.loki_gateway_basicauth,
-  ]
+  depends_on = [kubernetes_namespace.observability]
 }
 
 # ─── Promtail (node-level log shipper → Loki) ─────────────────────────────
@@ -671,10 +674,10 @@ resource "kubernetes_config_map" "netlix_shop_dashboard" {
 #   audit_type    request | response
 #   mount_type    kv | kubernetes | pki | system | identity | ...
 #   operation     read | update | list | delete | create
-#   has_error     true | false
 #
 #   Plus structured fields (extracted via `| json` in queries):
 #     display_name, vault_path, vault_namespace_path, error
+#     (errors are filtered with `| json | error != ""` at query time)
 #
 # Dashboard auto-loaded by Grafana sidecar via the grafana_dashboard=1 label.
 
@@ -754,7 +757,7 @@ resource "kubernetes_config_map" "vault_audit_dashboard" {
           gridPos    = { x = 6, y = 0, w = 6, h = 4 }
           datasource = { type = "loki", uid = "loki" }
           targets = [{
-            expr  = "sum(rate({namespace=\"vault\", container=\"vault\", has_error=\"true\", mount_type=~\"$mount_type\", operation=~\"$operation\"}[1m]))"
+            expr  = "sum(rate({namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\", operation=~\"$operation\"} | json | __error__=\"\" | error != \"\" [1m]))"
             refId = "A"
           }]
           options = {

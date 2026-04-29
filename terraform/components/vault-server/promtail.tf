@@ -90,16 +90,12 @@ resource "helm_release" "promtail" {
               # 1. Strip the kubelet CRI log envelope ("<timestamp> stdout F <line>").
               - cri: {}
 
-              # 2. Drop non-JSON lines (Vault startup/raft/info messages).
-              #    Audit lines always start with `{`.
-              - match:
-                  selector: '{namespace="vault", container="vault"} !~ "^\\\\{"'
-                  action: drop
-                  drop_counter_reason: not_json
-
-              # 3. Parse the audit JSON envelope into named expressions.
+              # 2. Parse the audit JSON envelope into named expressions.
               #    Top-level `type` is "request" or "response"; presence of
               #    that field is what tells us this is actually audit.
+              #    Non-JSON lines (Vault startup/raft messages) fail JSON
+              #    parsing silently and the audit_type expression stays
+              #    empty — they get dropped by the next stage.
               - json:
                   expressions:
                     audit_type: type
@@ -110,31 +106,31 @@ resource "helm_release" "promtail" {
                     display_name: '"auth".display_name'
                     error: '"response".error'
 
-              # 4. Drop anything that wasn't audit (no `type` set).
+              # 3. Drop anything that wasn't audit (no `type` set). This
+              #    also handles non-JSON lines, since the JSON parse
+              #    above leaves audit_type empty for them.
               - drop:
                   source: audit_type
                   expression: '^$'
                   drop_counter_reason: not_audit
 
-              # 5. Promote only low-cardinality fields to labels — these
+              # 4. Promote only low-cardinality fields to labels — these
               #    are the dashboard's primary query dimensions.
               #
               #    audit_type      ~2 values (request, response)
               #    mount_type      ~10 values (kv, kubernetes, pki, system, identity, ...)
               #    operation       ~5 values (read, update, list, delete, create)
-              #    has_error       2 values  (set later, see template stage)
               #
-              #    display_name, vault_path, vault_namespace_path stay as
-              #    structured fields — they're high-cardinality and Loki
+              #    display_name, vault_path, vault_namespace_path, error
+              #    stay as structured fields — they're either too
+              #    high-cardinality or only relevant on subsets. LogQL
               #    queries `| json | display_name=~"..."` instead.
-              - template:
-                  source: has_error
-                  template: '{{ if .error }}true{{ else }}false{{ end }}'
+              #    For "has error" filtering at query time, use
+              #    `| json | error != ""`.
               - labels:
                   audit_type:
                   mount_type:
                   operation:
-                  has_error:
 
             relabel_configs:
               # Discover only Vault server pods. The Vault statefulset's
