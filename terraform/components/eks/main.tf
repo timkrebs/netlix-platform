@@ -72,10 +72,6 @@ module "eks" {
     # HorizontalPodAutoscalers can read pod CPU/memory. Required for
     # the shop-services HPAs in app/manifests/shop/*-hpa.yaml.
     metrics-server = { most_recent = true }
-    amazon-cloudwatch-observability = {
-      addon_version            = "v4.10.3-eksbuild.1"
-      service_account_role_arn = module.cloudwatch_observability_irsa.iam_role_arn
-    }
   }
 
   enable_cluster_creator_admin_permissions = false
