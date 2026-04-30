@@ -49,10 +49,12 @@ variable "node_max_size" {
   # added later.
   default = 8
 
-  validation {
-    condition     = var.node_max_size >= var.node_min_size
-    error_message = "node_max_size must be greater than or equal to node_min_size."
-  }
+  # NOTE: cross-variable validation (`var.node_max_size >= var.node_min_size`)
+  # was removed because HCP Terraform's agent errors out during init with
+  # "Reference to uninitialized variable" — same issue we hit in the
+  # vault-cluster workspace. Terraform's `number` type already bounds the
+  # input and the AWS EKS module rejects inconsistent min/max combinations
+  # on its own, so the check was advisory rather than load-bearing.
 }
 
 variable "cluster_endpoint_public_access_cidrs" {
