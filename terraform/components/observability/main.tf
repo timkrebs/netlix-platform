@@ -696,13 +696,20 @@ resource "kubernetes_config_map" "vault_audit_dashboard" {
 
   data = {
     "vault-audit.json" = jsonencode({
-      title         = "Vault Audit"
+      title         = "HashiCorp Vault Audit"
       uid           = "vault-audit"
       schemaVersion = 38
       timezone      = "browser"
       time          = { from = "now-1h", to = "now" }
       refresh       = "30s"
       tags          = ["netlix", "vault", "audit", "security"]
+      # Template variables use the modern Loki variable-query object
+      # (`type: "labelValues"`) instead of the legacy `type: 1` integer.
+      # Grafana 10+ tries to "upgrade" the legacy format on dashboard
+      # load and sometimes fails ("Failed to upgrade legacy queries"),
+      # leaving $mount_type/$operation unresolved — every panel query
+      # then expands to `mount_type=~"$mount_type"` (literal) and
+      # silently returns no data.
       templating = {
         list = [
           {
@@ -711,8 +718,10 @@ resource "kubernetes_config_map" "vault_audit_dashboard" {
             type       = "query"
             datasource = { type = "loki", uid = "loki" }
             query = {
-              label = "mount_type"
-              type  = 1
+              type   = "labelValues"
+              label  = "mount_type"
+              stream = "{namespace=\"vault\", container=\"vault\"}"
+              refId  = "LokiVariableQueryEditor-VariableQuery"
             }
             refresh    = 2
             includeAll = true
@@ -724,8 +733,10 @@ resource "kubernetes_config_map" "vault_audit_dashboard" {
             type       = "query"
             datasource = { type = "loki", uid = "loki" }
             query = {
-              label = "operation"
-              type  = 1
+              type   = "labelValues"
+              label  = "operation"
+              stream = "{namespace=\"vault\", container=\"vault\"}"
+              refId  = "LokiVariableQueryEditor-VariableQuery"
             }
             refresh    = 2
             includeAll = true
