@@ -145,3 +145,108 @@ as bootstrap-only. For production, create a scoped admin policy.
 - [x] Add Terraform tests (`.tftest.hcl`) for networking, dns, eks, rds
 - [x] Add `.terraform-docs.yml` for auto-generated module docs
 - [x] Fix networking NAT gateway logic (was checking `"production"`, now `"dev"`)
+
+---
+
+## Phase 6 — Vault Security Hardening (in flight)
+
+Checkpoint tag before starting: `checkpoint/pre-phase1-vault-rotation-2026-04-30-dev`.
+
+### Goals
+
+Three items from the cross-cutting audit (Phase 5 follow-up), sequenced to minimize migration
+risk and to give the demo a coherent "least-privilege + live rotation" narrative:
+
+- **6.1** — Per-service Vault policies (least-privilege)
+- **6.2** — JWT signing-key rotation (N+1 keys, no pod restart)
+- **6.3** — Root token hygiene (non-root admin for ongoing TF, documented rotation)
+
+Each item is committed separately; each is independently revertible. None of them remove
+existing roles/policies until the new ones are proven — old `netlix-vso` and `netlix-app`
+policies stay in place as backstops during migration.
+
+### 6.1 — Per-service Vault policies (foundation)
+
+**Problem:** [terraform/components/vault-config/policies.tf:8](terraform/components/vault-config/policies.tf#L8) — both `netlix-vso`
+and `netlix-app` grant `secret/data/netlix/*` (wildcard). Compromise of any service
+exposes every secret in `secret/netlix/*` (db, jwt, grafana admin, feature flags).
+Today VSO authenticates *once* with this wildcard role and syncs everything.
+
+**Approach:** Keep VSO's centralized-pull model, but split by *secret class* via per-secret
+ServiceAccounts that VSO impersonates. Each secret class gets its own Vault role + policy
+scoped to a single KVv2 / PKI path.
+
+**Resources to add:**
+
+| Service Account (consul) | VaultAuth CRD (consul)   | Vault role (env)     | Vault policy                | Grants                                   |
+| ------------------------ | ------------------------ | -------------------- | --------------------------- | ---------------------------------------- |
+| `vso-shop-db`            | `vault-auth-shop-db`     | `netlix-shop-db`     | `netlix-shop-db-reader`     | read `secret/data/netlix/db`             |
+| `vso-shop-jwt`           | `vault-auth-shop-jwt`    | `netlix-shop-jwt`    | `netlix-shop-jwt-reader`    | read `secret/data/netlix/jwt`            |
+| `vso-shop-config`        | `vault-auth-shop-config` | `netlix-shop-config` | `netlix-shop-config-reader` | read `secret/data/netlix/featureflags`   |
+| `vso-shop-pki`           | `vault-auth-shop-pki`    | `netlix-shop-pki`    | `netlix-shop-pki-issuer`    | `pki_int/issue/netlix-app` (create only) |
+
+**Migration steps (each safe to revert):**
+
+1. Add 4 SAs in [app/manifests/base/vso-impersonators.yaml](app/manifests/base/vso-impersonators.yaml) (new file)
+2. Add 4 Vault auth roles + 4 policies in [terraform/components/vault-config/](terraform/components/vault-config/) (new files: `policies-per-service.tf`, `auth-per-service.tf`)
+3. Add 4 VaultAuth CRDs in [app/manifests/base/vault-auth-per-secret.yaml](app/manifests/base/vault-auth-per-secret.yaml) (new file)
+4. Switch [app/manifests/shop/vault-secrets.yaml](app/manifests/shop/vault-secrets.yaml) `vaultAuthRef`: `default` → per-secret name
+5. Same for [app/manifests/shop/feature-flags.yaml](app/manifests/shop/feature-flags.yaml) and [app/manifests/shop/pki-secrets.yaml](app/manifests/shop/pki-secrets.yaml)
+6. Old `netlix-vso` policy/role kept in place (becomes unused but doesn't break anything)
+
+**Reversibility:** revert the manifest commit → VaultStaticSecrets fall back to `default` VaultAuth → `netlix-vso` wildcard role still works.
+
+### 6.2 — JWT signing-key rotation (N+1 keys, hot-reload)
+
+**Problem:** [auth/main.go:107-121](app/services/auth/main.go#L107) reads `JWT_SIGNING_KEY` once at startup;
+[orders/main.go:151-171](app/services/orders/main.go#L151) does the same. Rotating the key in Vault breaks every
+pre-rotation token until both services are fully re-rolled.
+
+**Approach:** Mirror the feature-flag pattern (worked great there):
+- Vault KVv2 stores a key-set: `{"keys": [{"id":"v2","key":"...","status":"primary"}, {"id":"v1","key":"...","status":"verifying"}]}`
+- VSO syncs to a K8s Secret with one key `keys.json`
+- Auth + orders mount the Secret as a *file* (no env var), poll every 30 s
+- Auth signs with the `primary` key, sets `kid` JWT header
+- Orders verifies by `kid` (looks up matching key in current set), accepts both `primary` and `verifying` keys
+- Rotation procedure: `vault kv put secret/netlix/jwt keys=...` — both pods pick up within ~60 s, no restart, in-flight tokens stay valid
+
+**Backwards compatibility:** Tokens with no `kid` header (old format) fall through to the primary key, so existing sessions keep working through the upgrade.
+
+**File changes:**
+- Edit [terraform/components/vault-config/kv.tf:38-46](terraform/components/vault-config/kv.tf#L38) — multi-key structure with `lifecycle.ignore_changes = [data_json]`
+- Edit [app/manifests/shop/vault-secrets.yaml:69-73](app/manifests/shop/vault-secrets.yaml#L69) — VSO template writes `keys.json` file, not env var
+- Edit [app/manifests/shop/auth.yaml](app/manifests/shop/auth.yaml) — mount `shop-jwt` as a volume, drop `envFrom: shop-jwt`
+- Edit [app/manifests/shop/orders.yaml](app/manifests/shop/orders.yaml) — same volume mount
+- New: [app/services/auth/jwks.go](app/services/auth/jwks.go) — `JWKSManager` with file watcher, sign/verify helpers
+- New: [app/services/orders/jwks.go](app/services/orders/jwks.go) — verify-only JWKS helper
+- Edit [app/services/auth/main.go](app/services/auth/main.go) and [auth/jwt.go](app/services/auth/jwt.go) — use JWKS instead of single key
+- Edit [app/services/orders/main.go](app/services/orders/main.go) — use JWKS verifier
+
+**Reversibility:** revert source + manifest commit. Existing tokens still verify with the primary key.
+
+### 6.3 — Root token hygiene
+
+**Problem:** [terraform/workspaces/vault-cluster/providers.tf:35-39](terraform/workspaces/vault-cluster/providers.tf#L35) uses `var.vault_root_token` for every TF apply. The token is in HCP TF state forever and never rotated.
+
+**Approach (low-risk):** Don't try to automate root rotation — that's how you accidentally lock yourself out. Instead:
+
+1. Add a `vault_token` resource that issues a long-lived (1 year), renewable, **non-root** admin token from the existing admin policy
+2. Output it (sensitive)
+3. Document the manual rotation procedure in [docs/vault-root-rotation.md](docs/vault-root-rotation.md):
+    - First apply: bootstraps with `var.vault_root_token` as today
+    - Operator copies the new admin token from `terraform output -raw tf_admin_token` into HCP TF workspace var `vault_root_token`
+    - Re-apply: provider now uses non-root admin token
+    - Operator runs `vault operator generate-root` to issue a fresh root token (recovery key quorum)
+    - Operator runs `vault token revoke -accessor <old-root-accessor>` to invalidate the original
+4. Add audit-log query example in the doc — proves the rotation is observable
+
+**Reversibility:** revert the resource + remove the doc. No actual cluster state changes happen until the operator runs the manual procedure.
+
+### Order of operations
+
+1. **Commit A — `feat(vault): per-service Vault policies (Phase 6.1)`**: adds new resources, no behavior change yet
+2. **Commit B — `feat(vault): switch VaultStaticSecrets to per-service auth (Phase 6.1 cutover)`**: flips `vaultAuthRef` on each secret one at a time. Validate each in Loki + `kubectl get secret`.
+3. **Commit C — `feat(vault): JWT N+1 key rotation (Phase 6.2)`**: depends on the `netlix-shop-jwt-reader` policy from A; multi-key structure + JWKS code
+4. **Commit D — `feat(vault): non-root admin token + rotation runbook (Phase 6.3)`**: independent, just adds Terraform resource + docs
+
+Each commit lands on `dev`, gets applied via HCP TF, validated, then we proceed to the next.
