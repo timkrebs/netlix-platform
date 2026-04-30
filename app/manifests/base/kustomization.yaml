@@ -8,4 +8,11 @@ resources:
   - resource-quota.yaml
   - vault-sa.yaml
   - vault-auth.yaml
+  # Phase 6.1: per-secret-class VSO impersonator SAs and matching
+  # VaultAuth CRDs. These exist alongside `vault-sa.yaml` and
+  # `vault-auth.yaml` (the legacy single-identity setup) until each
+  # VaultStaticSecret is cut over to its per-service VaultAuth in
+  # Phase 6.1 Commit B.
+  - vso-impersonators.yaml
+  - vault-auth-per-secret.yaml
   - network-policies.yaml

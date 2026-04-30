@@ -1,0 +1,54 @@
+# Per-secret-class impersonator ServiceAccounts (Phase 6.1).
+#
+# VSO authenticates to Vault by calling Kubernetes TokenRequest on the SA
+# named in VaultAuth.spec.kubernetes.serviceAccount. Each per-service
+# Vault role (terraform/components/vault-config/auth-per-service.tf)
+# binds to a distinct SA name here, so a stolen TokenRequest result for
+# one SA only authenticates as the matching narrow role.
+#
+# These SAs do NOT need any K8s RBAC of their own — they exist purely
+# as identities VSO presents to Vault. The TokenRequest itself is
+# issued by VSO's controller pod, which has cluster-wide
+# `serviceaccounts/token: create` from the operator's helm chart.
+#
+# After Phase 6.1 Commit B switches every VaultStaticSecret to its
+# per-service VaultAuth, the legacy `vault-secrets-operator-controller-manager`
+# SA in vault-sa.yaml stops being used for shop secrets (it's still in
+# place as a backstop and for the observability namespace's separate
+# Grafana credentials).
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vso-shop-db
+  namespace: consul
+  labels:
+    app.kubernetes.io/component: vso-impersonator
+    netlix.dev/secret-class: shop-db
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vso-shop-jwt
+  namespace: consul
+  labels:
+    app.kubernetes.io/component: vso-impersonator
+    netlix.dev/secret-class: shop-jwt
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vso-shop-config
+  namespace: consul
+  labels:
+    app.kubernetes.io/component: vso-impersonator
+    netlix.dev/secret-class: shop-config
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vso-shop-pki
+  namespace: consul
+  labels:
+    app.kubernetes.io/component: vso-impersonator
+    netlix.dev/secret-class: shop-pki

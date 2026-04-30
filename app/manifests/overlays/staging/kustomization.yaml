@@ -24,6 +24,14 @@ patches:
     target:
       kind: VaultAuth
       name: default
+  # Phase 6.1: per-secret VaultAuth CRDs (added in base/vault-auth-per-secret.yaml).
+  - target:
+      kind: VaultAuth
+      labelSelector: netlix.dev/auth-class=per-secret
+    patch: |-
+      - op: add
+        path: /spec/namespace
+        value: staging
   - path: patch-shop-db-namespace.yaml
     target:
       kind: VaultStaticSecret
