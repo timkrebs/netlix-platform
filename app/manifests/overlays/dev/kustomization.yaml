@@ -11,34 +11,34 @@ resources:
 images:
 - name: netlix-auth
   newName: ghcr.io/timkrebs/netlix-platform/auth
-  newTag: dev-24e5f09a5a7a1af75cb5f81d50efc3dce53048f9
+  newTag: dev-be169f9fd2718c48d2e8828ea35b9798bd8029cf
 - name: netlix-catalog
   newName: ghcr.io/timkrebs/netlix-platform/catalog
-  newTag: dev-24e5f09a5a7a1af75cb5f81d50efc3dce53048f9
+  newTag: dev-be169f9fd2718c48d2e8828ea35b9798bd8029cf
 - name: netlix-gateway
   newName: ghcr.io/timkrebs/netlix-platform/gateway
-  newTag: dev-24e5f09a5a7a1af75cb5f81d50efc3dce53048f9
+  newTag: dev-be169f9fd2718c48d2e8828ea35b9798bd8029cf
 - name: netlix-orders
   newName: ghcr.io/timkrebs/netlix-platform/orders
-  newTag: dev-24e5f09a5a7a1af75cb5f81d50efc3dce53048f9
+  newTag: dev-be169f9fd2718c48d2e8828ea35b9798bd8029cf
 
 # Patch the Vault-namespace fields on the shop's VSO resources to point
 # at the per-environment Vault namespace (default in base is `admin`).
+# Phase 6.1: same treatment for the per-secret VaultAuth CRDs added in
+# base/vault-auth-per-secret.yaml. Targeted by label so a single inline
+# patch covers all four (vault-auth-shop-{db,jwt,config,pki}).
 patches:
 - path: patch-vault-auth.yaml
   target:
     kind: VaultAuth
     name: default
-# Phase 6.1: same treatment for the per-secret VaultAuth CRDs added in
-# base/vault-auth-per-secret.yaml. Targeted by label so a single inline
-# patch covers all four (vault-auth-shop-{db,jwt,config,pki}).
-- target:
-    kind: VaultAuth
-    labelSelector: netlix.dev/auth-class=per-secret
-  patch: |-
+- patch: |-
     - op: add
       path: /spec/namespace
       value: dev
+  target:
+    kind: VaultAuth
+    labelSelector: netlix.dev/auth-class=per-secret
 - path: patch-shop-db-namespace.yaml
   target:
     kind: VaultStaticSecret
