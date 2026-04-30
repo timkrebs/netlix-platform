@@ -675,9 +675,13 @@ resource "kubernetes_config_map" "netlix_shop_dashboard" {
 #   mount_type    kv | kubernetes | pki | system | identity | ...
 #   operation     read | update | list | delete | create
 #
-#   Plus structured fields (extracted via `| json` in queries):
-#     display_name, vault_path, vault_namespace_path, error
-#     (errors are filtered with `| json | error != ""` at query time)
+#   Plus structured fields available after `| json` in LogQL queries:
+#     auth_display_name              (from auth.display_name)
+#     request_path                   (from request.path)
+#     request_namespace_path         (from request.namespace.path)
+#     response_error                 (from response.error)
+#   LogQL's `| json` parser flattens nested JSON with underscores.
+#   (Errors are filtered with `| json | response_error != ""` at query time.)
 #
 # Dashboard auto-loaded by Grafana sidecar via the grafana_dashboard=1 label.
 
@@ -757,7 +761,7 @@ resource "kubernetes_config_map" "vault_audit_dashboard" {
           gridPos    = { x = 6, y = 0, w = 6, h = 4 }
           datasource = { type = "loki", uid = "loki" }
           targets = [{
-            expr  = "sum(rate({namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\", operation=~\"$operation\"} | json | __error__=\"\" | error != \"\" [1m]))"
+            expr  = "sum(rate({namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\", operation=~\"$operation\"} | json | __error__=\"\" | response_error != \"\" [1m]))"
             refId = "A"
           }]
           options = {
@@ -785,7 +789,7 @@ resource "kubernetes_config_map" "vault_audit_dashboard" {
           gridPos    = { x = 12, y = 0, w = 6, h = 4 }
           datasource = { type = "loki", uid = "loki" }
           targets = [{
-            expr  = "count(count by(display_name) (count_over_time({namespace=\"vault\", container=\"vault\", audit_type=\"response\"} | json [1h])))"
+            expr  = "count(count by(auth_display_name) (count_over_time({namespace=\"vault\", container=\"vault\", audit_type=\"response\"} | json [1h])))"
             refId = "A"
           }]
           options = {
@@ -800,7 +804,7 @@ resource "kubernetes_config_map" "vault_audit_dashboard" {
           gridPos    = { x = 18, y = 0, w = 6, h = 4 }
           datasource = { type = "loki", uid = "loki" }
           targets = [{
-            expr  = "count(count by(vault_path) (count_over_time({namespace=\"vault\", container=\"vault\", audit_type=\"response\"} | json [1h])))"
+            expr  = "count(count by(request_path) (count_over_time({namespace=\"vault\", container=\"vault\", audit_type=\"response\"} | json [1h])))"
             refId = "A"
           }]
           options = {
@@ -841,8 +845,8 @@ resource "kubernetes_config_map" "vault_audit_dashboard" {
           gridPos    = { x = 0, y = 12, w = 12, h = 8 }
           datasource = { type = "loki", uid = "loki" }
           targets = [{
-            expr         = "topk(10, sum by(display_name) (count_over_time({namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\", operation=~\"$operation\"} | json [1h])))"
-            legendFormat = "{{display_name}}"
+            expr         = "topk(10, sum by(auth_display_name) (count_over_time({namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\", operation=~\"$operation\"} | json [1h])))"
+            legendFormat = "{{auth_display_name}}"
             refId        = "A"
           }]
         },
@@ -853,8 +857,8 @@ resource "kubernetes_config_map" "vault_audit_dashboard" {
           gridPos    = { x = 12, y = 12, w = 12, h = 8 }
           datasource = { type = "loki", uid = "loki" }
           targets = [{
-            expr         = "topk(10, sum by(vault_path) (count_over_time({namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\", operation=~\"$operation\"} | json [1h])))"
-            legendFormat = "{{vault_path}}"
+            expr         = "topk(10, sum by(request_path) (count_over_time({namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\", operation=~\"$operation\"} | json [1h])))"
+            legendFormat = "{{request_path}}"
             refId        = "A"
           }]
         },
@@ -866,7 +870,7 @@ resource "kubernetes_config_map" "vault_audit_dashboard" {
           gridPos    = { x = 0, y = 20, w = 24, h = 12 }
           datasource = { type = "loki", uid = "loki" }
           targets = [{
-            expr  = "{namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\", operation=~\"$operation\"} | json | line_format \"{{.operation}} {{.vault_path}} ({{.display_name}})\""
+            expr  = "{namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\", operation=~\"$operation\"} | json | line_format \"{{.operation}} {{.request_path}} ({{.auth_display_name}})\""
             refId = "A"
           }]
           options = {
