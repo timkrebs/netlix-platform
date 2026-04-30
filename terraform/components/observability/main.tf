@@ -234,8 +234,14 @@ resource "helm_release" "kube_prometheus_stack" {
       # can push). Grafana's queries hit the same gateway and need the
       # same credentials. Same username/password the chart configures
       # on the gateway side.
+      #
+      # `uid: "loki"` is explicit so dashboards can reference it
+      # reliably (otherwise Grafana auto-generates a UID, which the
+      # netlix-shop and netlix-vault-audit dashboards both reference
+      # as `uid: "loki"`).
       additionalDataSources = [
         {
+          uid           = "loki"
           name          = "Loki"
           type          = "loki"
           url           = "http://loki-gateway.${kubernetes_namespace.observability.metadata[0].name}.svc.cluster.local"
@@ -243,6 +249,7 @@ resource "helm_release" "kube_prometheus_stack" {
           isDefault     = false
           basicAuth     = true
           basicAuthUser = var.loki_ingest_username
+          editable      = true
           secureJsonData = {
             basicAuthPassword = var.loki_ingest_password
           }
@@ -700,9 +707,13 @@ resource "kubernetes_config_map" "vault_audit_dashboard" {
       uid           = "vault-audit"
       schemaVersion = 38
       timezone      = "browser"
-      time          = { from = "now-1h", to = "now" }
-      refresh       = "30s"
-      tags          = ["netlix", "vault", "audit", "security"]
+      # Default to 24h. Vault audit on a dev cluster is very bursty —
+      # `rate()` over a 1-minute window of sparse events returns "No
+      # data" instead of zero, so a wider range plus count_over_time
+      # in stat panels is what actually populates the dashboard.
+      time    = { from = "now-24h", to = "now" }
+      refresh = "30s"
+      tags    = ["netlix", "vault", "audit", "security"]
       # Template variables use the modern Loki variable-query object
       # (`type: "labelValues"`) instead of the legacy `type: 1` integer.
       # Grafana 10+ tries to "upgrade" the legacy format on dashboard
@@ -745,16 +756,19 @@ resource "kubernetes_config_map" "vault_audit_dashboard" {
         ]
       }
       panels = [
-        # ── Row 1: top-line stats ──
+        # ── Row 1: top-line stats (count over the dashboard's
+        # selected time range — robust against sparse data, never
+        # shows "No data" when at least one event is in range) ──
         {
           id         = 1
           type       = "stat"
-          title      = "Audit events / sec"
+          title      = "Audit events ($__range)"
           gridPos    = { x = 0, y = 0, w = 6, h = 4 }
           datasource = { type = "loki", uid = "loki" }
           targets = [{
-            expr  = "sum(rate({namespace=\"vault\", container=\"vault\", audit_type=~\"request|response\", mount_type=~\"$mount_type\", operation=~\"$operation\"}[1m]))"
-            refId = "A"
+            datasource = { type = "loki", uid = "loki" }
+            expr       = "sum(count_over_time({namespace=\"vault\", container=\"vault\", audit_type=~\"request|response\", mount_type=~\"$mount_type\", operation=~\"$operation\"}[$__range]))"
+            refId      = "A"
           }]
           options = {
             colorMode     = "value"
@@ -762,18 +776,19 @@ resource "kubernetes_config_map" "vault_audit_dashboard" {
             reduceOptions = { calcs = ["lastNotNull"] }
           }
           fieldConfig = {
-            defaults = { unit = "ops" }
+            defaults = { unit = "short" }
           }
         },
         {
           id         = 2
           type       = "stat"
-          title      = "Errors / sec"
+          title      = "Errors ($__range)"
           gridPos    = { x = 6, y = 0, w = 6, h = 4 }
           datasource = { type = "loki", uid = "loki" }
           targets = [{
-            expr  = "sum(rate({namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\", operation=~\"$operation\"} | json | __error__=\"\" | response_error != \"\" [1m]))"
-            refId = "A"
+            datasource = { type = "loki", uid = "loki" }
+            expr       = "sum(count_over_time({namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\", operation=~\"$operation\"} | json | __error__=\"\" | response_error != \"\" [$__range]))"
+            refId      = "A"
           }]
           options = {
             colorMode     = "value"
@@ -782,12 +797,12 @@ resource "kubernetes_config_map" "vault_audit_dashboard" {
           }
           fieldConfig = {
             defaults = {
-              unit = "ops"
+              unit = "short"
               thresholds = {
                 mode = "absolute"
                 steps = [
                   { color = "green", value = null },
-                  { color = "red", value = 0.1 },
+                  { color = "red", value = 1 },
                 ]
               }
             }
@@ -796,12 +811,13 @@ resource "kubernetes_config_map" "vault_audit_dashboard" {
         {
           id         = 3
           type       = "stat"
-          title      = "Distinct identities (1h)"
+          title      = "Distinct identities ($__range)"
           gridPos    = { x = 12, y = 0, w = 6, h = 4 }
           datasource = { type = "loki", uid = "loki" }
           targets = [{
-            expr  = "count(count by(auth_display_name) (count_over_time({namespace=\"vault\", container=\"vault\", audit_type=\"response\"} | json [1h])))"
-            refId = "A"
+            datasource = { type = "loki", uid = "loki" }
+            expr       = "count(count by(auth_display_name) (count_over_time({namespace=\"vault\", container=\"vault\", audit_type=\"response\"} | json [$__range])))"
+            refId      = "A"
           }]
           options = {
             colorMode     = "value"
@@ -811,19 +827,22 @@ resource "kubernetes_config_map" "vault_audit_dashboard" {
         {
           id         = 4
           type       = "stat"
-          title      = "Distinct vault paths (1h)"
+          title      = "Distinct vault paths ($__range)"
           gridPos    = { x = 18, y = 0, w = 6, h = 4 }
           datasource = { type = "loki", uid = "loki" }
           targets = [{
-            expr  = "count(count by(request_path) (count_over_time({namespace=\"vault\", container=\"vault\", audit_type=\"response\"} | json [1h])))"
-            refId = "A"
+            datasource = { type = "loki", uid = "loki" }
+            expr       = "count(count by(request_path) (count_over_time({namespace=\"vault\", container=\"vault\", audit_type=\"response\"} | json [$__range])))"
+            refId      = "A"
           }]
           options = {
             colorMode     = "value"
             reduceOptions = { calcs = ["lastNotNull"] }
           }
         },
-        # ── Row 2: time series ──
+        # ── Row 2: time series (5-min rate windows give a smoother
+        # line on bursty/sparse audit traffic; with 1m windows the
+        # series flickers between values and "no data") ──
         {
           id         = 5
           type       = "timeseries"
@@ -831,7 +850,8 @@ resource "kubernetes_config_map" "vault_audit_dashboard" {
           gridPos    = { x = 0, y = 4, w = 12, h = 8 }
           datasource = { type = "loki", uid = "loki" }
           targets = [{
-            expr         = "sum by (mount_type) (rate({namespace=\"vault\", container=\"vault\", audit_type=\"response\", operation=~\"$operation\"}[1m]))"
+            datasource   = { type = "loki", uid = "loki" }
+            expr         = "sum by (mount_type) (rate({namespace=\"vault\", container=\"vault\", audit_type=\"response\", operation=~\"$operation\"}[5m]))"
             legendFormat = "{{mount_type}}"
             refId        = "A"
           }]
@@ -843,20 +863,23 @@ resource "kubernetes_config_map" "vault_audit_dashboard" {
           gridPos    = { x = 12, y = 4, w = 12, h = 8 }
           datasource = { type = "loki", uid = "loki" }
           targets = [{
-            expr         = "sum by (operation) (rate({namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\"}[1m]))"
+            datasource   = { type = "loki", uid = "loki" }
+            expr         = "sum by (operation) (rate({namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\"}[5m]))"
             legendFormat = "{{operation}}"
             refId        = "A"
           }]
         },
-        # ── Row 3: top-N tables ──
+        # ── Row 3: top-N tables (count over the dashboard time
+        # range, same as stat panels — keeps everything aligned) ──
         {
           id         = 7
           type       = "barchart"
-          title      = "Top identities (last 1h)"
+          title      = "Top identities ($__range)"
           gridPos    = { x = 0, y = 12, w = 12, h = 8 }
           datasource = { type = "loki", uid = "loki" }
           targets = [{
-            expr         = "topk(10, sum by(auth_display_name) (count_over_time({namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\", operation=~\"$operation\"} | json [1h])))"
+            datasource   = { type = "loki", uid = "loki" }
+            expr         = "topk(10, sum by(auth_display_name) (count_over_time({namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\", operation=~\"$operation\"} | json [$__range])))"
             legendFormat = "{{auth_display_name}}"
             refId        = "A"
           }]
@@ -864,25 +887,51 @@ resource "kubernetes_config_map" "vault_audit_dashboard" {
         {
           id         = 8
           type       = "barchart"
-          title      = "Top vault paths (last 1h)"
+          title      = "Top vault paths ($__range)"
           gridPos    = { x = 12, y = 12, w = 12, h = 8 }
           datasource = { type = "loki", uid = "loki" }
           targets = [{
-            expr         = "topk(10, sum by(request_path) (count_over_time({namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\", operation=~\"$operation\"} | json [1h])))"
+            datasource   = { type = "loki", uid = "loki" }
+            expr         = "topk(10, sum by(request_path) (count_over_time({namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\", operation=~\"$operation\"} | json [$__range])))"
             legendFormat = "{{request_path}}"
             refId        = "A"
           }]
         },
-        # ── Row 4: live tail ──
+        # ── Row 4: live tail (filtered) ──
         {
           id         = 9
           type       = "logs"
-          title      = "Live audit tail"
-          gridPos    = { x = 0, y = 20, w = 24, h = 12 }
+          title      = "Live audit tail (filtered)"
+          gridPos    = { x = 0, y = 20, w = 24, h = 10 }
           datasource = { type = "loki", uid = "loki" }
           targets = [{
-            expr  = "{namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\", operation=~\"$operation\"} | json | line_format \"{{.operation}} {{.request_path}} ({{.auth_display_name}})\""
-            refId = "A"
+            datasource = { type = "loki", uid = "loki" }
+            expr       = "{namespace=\"vault\", container=\"vault\", audit_type=\"response\", mount_type=~\"$mount_type\", operation=~\"$operation\"} | json | line_format \"{{.operation}} {{.request_path}} ({{.auth_display_name}})\""
+            refId      = "A"
+          }]
+          options = {
+            showTime       = true
+            wrapLogMessage = true
+            sortOrder      = "Descending"
+            dedupStrategy  = "none"
+          }
+        },
+        # ── Row 5: diagnostic panel — simplest possible Loki query,
+        # no template variable substitution. If THIS panel is empty
+        # but rows 1–4 are showing data, the issue is in the more
+        # complex queries above. If this is ALSO empty, the problem
+        # is the Grafana → Loki connection (auth, datasource UID,
+        # network), NOT the queries. Use this to triage. ──
+        {
+          id         = 10
+          type       = "logs"
+          title      = "Recent audit events (raw — diagnostic panel)"
+          gridPos    = { x = 0, y = 30, w = 24, h = 10 }
+          datasource = { type = "loki", uid = "loki" }
+          targets = [{
+            datasource = { type = "loki", uid = "loki" }
+            expr       = "{namespace=\"vault\", container=\"vault\"}"
+            refId      = "A"
           }]
           options = {
             showTime       = true
