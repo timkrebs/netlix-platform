@@ -21,7 +21,9 @@ metadata:
   name: shop-feature-flags
   namespace: consul
 spec:
-  vaultAuthRef: default
+  # Phase 6.1 Commit B: narrow auth — can only read
+  # `secret/data/netlix/featureflags`.
+  vaultAuthRef: vault-auth-shop-config
   namespace: admin
   mount: secret
   type: kv-v2
