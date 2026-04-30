@@ -7,12 +7,43 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"golang.org/x/crypto/bcrypt"
 )
+
+const testJWKSKid = "test"
+const testJWKSKey = "test-secret-must-be-stable-for-tests"
+
+// newTestJWKSManager writes a single-key JWKS document to a tempdir
+// and returns a manager loaded from it. The key matches testJWKSKey
+// so any helper that signs a JWT with that constant can be verified
+// by srv.cfg.jwks.
+func newTestJWKSManager(t *testing.T) *JWKSManager {
+	t.Helper()
+	doc := map[string]any{
+		"primary_kid": testJWKSKid,
+		"keys":        map[string]string{testJWKSKid: testJWKSKey},
+	}
+	body, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("marshal jwks: %v", err)
+	}
+	path := filepath.Join(t.TempDir(), "keys.json")
+	if err := os.WriteFile(path, body, 0o644); err != nil {
+		t.Fatalf("write jwks: %v", err)
+	}
+	logger := slog.New(slog.NewTextHandler(discardWriter{}, nil))
+	m, err := NewJWKSManager(path, logger)
+	if err != nil {
+		t.Fatalf("NewJWKSManager: %v", err)
+	}
+	return m
+}
 
 func newTestServer(t *testing.T) (*server, sqlmock.Sqlmock, func()) {
 	db, mock, err := sqlmock.New()
@@ -22,7 +53,7 @@ func newTestServer(t *testing.T) (*server, sqlmock.Sqlmock, func()) {
 	srv := &server{
 		db: db,
 		cfg: config{
-			jwtSecret:         []byte("test-secret-must-be-stable-for-tests"),
+			jwks:              newTestJWKSManager(t),
 			accessTTL:         time.Hour,
 			maxFailedAttempts: 3,
 			lockoutDuration:   time.Minute,

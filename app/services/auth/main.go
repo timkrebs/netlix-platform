@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -17,8 +18,12 @@ import (
 // Service-wide configuration, sourced from env vars. Values come from
 // k8s env (in prod) or docker-compose (locally).
 type config struct {
-	listenAddr         string
-	jwtSecret          []byte
+	listenAddr string
+	// jwks owns the active JWT signing key set, hot-reloaded from a
+	// VSO-projected file at JWT_KEYS_PATH. Replaces the previous
+	// single-key JWT_SIGNING_KEY env var so Vault key rotations
+	// propagate without a pod restart (Phase 6.2).
+	jwks               *JWKSManager
 	accessTTL          time.Duration
 	maxFailedAttempts  int
 	lockoutDuration    time.Duration
@@ -38,7 +43,7 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	slog.SetDefault(logger)
 
-	cfg, err := loadConfig()
+	cfg, err := loadConfig(logger)
 	if err != nil {
 		logger.Error("config", "err", err)
 		os.Exit(1)
@@ -104,15 +109,19 @@ func (s *server) routes(mux *http.ServeMux) {
 	mux.Handle("GET /me", s.requireAuth(http.HandlerFunc(s.me)))
 }
 
-func loadConfig() (config, error) {
-	secret := os.Getenv("JWT_SIGNING_KEY")
-	if secret == "" {
-		return config{}, errMissingEnv("JWT_SIGNING_KEY")
+func loadConfig(logger *slog.Logger) (config, error) {
+	// JWT_KEYS_PATH points at a file VSO projects from the shop-jwt
+	// K8s Secret. The file is JSON: {"primary_kid": "...", "keys": {...}}.
+	// Default matches the volume mount in app/manifests/shop/auth.yaml.
+	keysPath := envDefault("JWT_KEYS_PATH", "/etc/shop/jwt-keys.json")
+	jwks, err := NewJWKSManager(keysPath, logger)
+	if err != nil {
+		return config{}, fmt.Errorf("load JWKS: %w", err)
 	}
 
 	return config{
 		listenAddr:         envDefault("LISTEN_ADDR", "0.0.0.0:8080"),
-		jwtSecret:          []byte(secret),
+		jwks:               jwks,
 		accessTTL:          durationEnv("ACCESS_TOKEN_TTL", 2*time.Hour),
 		maxFailedAttempts:  intEnv("MAX_FAILED_ATTEMPTS", 5),
 		lockoutDuration:    durationEnv("LOCKOUT_DURATION", 15*time.Minute),

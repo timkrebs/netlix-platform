@@ -35,8 +35,15 @@ func (s *server) issueToken(userID int64, email string) (string, time.Time, erro
 		"exp":   exp.Unix(),
 		"iss":   "netlix-auth",
 	}
+	// Sign with the currently-active key from the JWKS. The kid header
+	// lets the verifier route to the right key after a rotation —
+	// orders' parseToken does the same lookup. After a Vault key
+	// rotation, this method starts using the new key on its next call
+	// (no pod restart) because PrimaryKey() reads the JWKS via RWMutex.
+	kid, key := s.cfg.jwks.PrimaryKey()
 	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signed, err := t.SignedString(s.cfg.jwtSecret)
+	t.Header["kid"] = kid
+	signed, err := t.SignedString(key)
 	if err != nil {
 		return "", time.Time{}, err
 	}
@@ -51,7 +58,11 @@ func (s *server) parseToken(raw string) (*tokenClaims, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method")
 		}
-		return s.cfg.jwtSecret, nil
+		// Look up the key by kid header. Tokens issued before the
+		// Phase 6.2 rollout have no kid; KeyByID falls back to the
+		// primary key in that case.
+		kid, _ := t.Header["kid"].(string)
+		return s.cfg.jwks.KeyByID(kid)
 	})
 	if err != nil || !t.Valid {
 		return nil, errors.New("invalid token")

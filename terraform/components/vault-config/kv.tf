@@ -40,8 +40,30 @@ resource "vault_kv_secret_v2" "shop_jwt" {
   mount     = vault_mount.kv.path
   name      = "netlix/jwt"
 
+  # Phase 6.2 multi-key format for hot rotation. The whole `keys` field
+  # is a single JSON-encoded string so VSO templates it verbatim into
+  # the K8s Secret's `keys.json` data key — see
+  # app/manifests/shop/vault-secrets.yaml's shop-jwt VaultStaticSecret.
+  # The auth + orders services mount that file and hot-reload it via
+  # JWKSManager (app/services/{auth,orders}/jwks.go).
+  #
+  # Rotation procedure:
+  #   1. Edit the keys map below: add a new entry (e.g. v2), change
+  #      primary_kid to the new entry. Keep the previous entry (v1)
+  #      so old tokens still verify until they expire.
+  #   2. `terraform apply`. Within ~60 s VSO + kubelet propagate the
+  #      new file; auth starts signing with the new primary key, orders
+  #      verifies tokens against both the new and previous keys.
+  #   3. Once all old-primary tokens have expired (ACCESS_TOKEN_TTL is
+  #      2 h by default), remove the old key from the map in a
+  #      follow-up commit.
   data_json = jsonencode({
-    signing_key = random_password.shop_jwt_signing_key.result
+    keys = jsonencode({
+      primary_kid = "v1"
+      keys = {
+        v1 = random_password.shop_jwt_signing_key.result
+      }
+    })
   })
 }
 

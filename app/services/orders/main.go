@@ -50,14 +50,19 @@ type ctxKey string
 const userIDKey ctxKey = "user_id"
 
 type server struct {
-	db        *sql.DB
-	jwtSecret []byte
+	db   *sql.DB
+	jwks *JWKSManager
 }
 
 func main() {
-	secret := os.Getenv("JWT_SIGNING_KEY")
-	if secret == "" {
-		log.Fatal("orders: JWT_SIGNING_KEY is required")
+	// JWT_KEYS_PATH is the file VSO projects from the shop-jwt K8s
+	// Secret. Default matches the volume mount in
+	// app/manifests/shop/orders.yaml. The keys hot-reload on a 30s
+	// poll, so Vault rotations propagate without a pod restart.
+	keysPath := envDefault("JWT_KEYS_PATH", "/etc/shop/jwt-keys.json")
+	jwks, err := NewJWKSManager(keysPath)
+	if err != nil {
+		log.Fatalf("orders: JWKS load: %v", err)
 	}
 
 	db, err := openDB(buildDSN())
@@ -66,7 +71,7 @@ func main() {
 	}
 	defer db.Close()
 
-	srv := &server{db: db, jwtSecret: []byte(secret)}
+	srv := &server{db: db, jwks: jwks}
 
 	mux := http.NewServeMux()
 	srv.routes(mux)
@@ -153,7 +158,11 @@ func (s *server) parseToken(raw string) (int64, string, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method")
 		}
-		return s.jwtSecret, nil
+		// Look up the key by kid header. Tokens issued before the
+		// Phase 6.2 rollout have no kid; KeyByID falls back to the
+		// primary key in that case (best-effort until they expire).
+		kid, _ := t.Header["kid"].(string)
+		return s.jwks.KeyByID(kid)
 	})
 	if err != nil || !t.Valid {
 		return 0, "", fmt.Errorf("invalid token")

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -12,12 +14,40 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+const testJWKSKid = "test"
+const testJWKSKey = "test-secret"
+
+// newTestJWKSManager writes a single-key JWKS document to a tempdir
+// and returns a manager loaded from it. The key matches testJWKSKey
+// so any helper that signs a JWT with that constant can be verified
+// by srv.jwks.
+func newTestJWKSManager(t *testing.T) *JWKSManager {
+	t.Helper()
+	doc := map[string]any{
+		"primary_kid": testJWKSKid,
+		"keys":        map[string]string{testJWKSKid: testJWKSKey},
+	}
+	body, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("marshal jwks: %v", err)
+	}
+	path := filepath.Join(t.TempDir(), "keys.json")
+	if err := os.WriteFile(path, body, 0o644); err != nil {
+		t.Fatalf("write jwks: %v", err)
+	}
+	m, err := NewJWKSManager(path)
+	if err != nil {
+		t.Fatalf("NewJWKSManager: %v", err)
+	}
+	return m
+}
+
 func newTestServer(t *testing.T) (*server, sqlmock.Sqlmock, func()) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("sqlmock: %v", err)
 	}
-	srv := &server{db: db, jwtSecret: []byte("test-secret")}
+	srv := &server{db: db, jwks: newTestJWKSManager(t)}
 	return srv, mock, func() { db.Close() }
 }
 
@@ -102,7 +132,7 @@ func TestCreateOrderHappyPath(t *testing.T) {
 		"items": []map[string]int{{"product_id": 1, "quantity": 2}},
 	})
 	req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(body))
-	req.Header.Set("Authorization", "Bearer "+makeToken(t, srv.jwtSecret, 7))
+	req.Header.Set("Authorization", "Bearer "+makeToken(t, []byte(testJWKSKey), 7))
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -132,7 +162,7 @@ func TestCreateOrderInsufficientStock(t *testing.T) {
 		"items": []map[string]int{{"product_id": 1, "quantity": 5}},
 	})
 	req := httptest.NewRequest(http.MethodPost, "/orders", bytes.NewReader(body))
-	req.Header.Set("Authorization", "Bearer "+makeToken(t, srv.jwtSecret, 7))
+	req.Header.Set("Authorization", "Bearer "+makeToken(t, []byte(testJWKSKey), 7))
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -153,7 +183,7 @@ func TestRequireAuthRejectsRevokedToken(t *testing.T) {
 	srv.routes(mux)
 
 	req := httptest.NewRequest(http.MethodGet, "/orders", nil)
-	req.Header.Set("Authorization", "Bearer "+makeToken(t, srv.jwtSecret, 7))
+	req.Header.Set("Authorization", "Bearer "+makeToken(t, []byte(testJWKSKey), 7))
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 

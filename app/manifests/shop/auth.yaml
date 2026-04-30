@@ -54,6 +54,18 @@ spec:
             name: auth-envoy
         - name: envoy-tmp
           emptyDir: {}
+        # Phase 6.2: shop-jwt is now mounted as a file rather than env
+        # vars so JWKSManager can hot-reload after a Vault key rotation.
+        # 0444 (world-readable) — auth runs as nonroot UID 65532.
+        # No `subPath`: kubelet refreshes the projected file in place
+        # when VSO updates the underlying K8s Secret.
+        - name: shop-jwt-keys
+          secret:
+            secretName: shop-jwt
+            defaultMode: 0444
+            items:
+              - key: keys.json
+                path: jwt-keys.json
       initContainers:
         - name: envoy
           image: envoyproxy/envoy:v1.31-latest
@@ -93,8 +105,17 @@ spec:
                 name: shop-db-config
             - secretRef:
                 name: shop-db
-            - secretRef:
-                name: shop-jwt
+            # Phase 6.2: shop-jwt is no longer surfaced as env vars —
+            # auth reads the multi-key JWKS from /etc/shop/jwt-keys.json
+            # via the volume mount below, so a Vault key rotation
+            # propagates without a pod restart.
+          env:
+            - name: JWT_KEYS_PATH
+              value: /etc/shop/jwt-keys.json
+          volumeMounts:
+            - name: shop-jwt-keys
+              mountPath: /etc/shop
+              readOnly: true
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
