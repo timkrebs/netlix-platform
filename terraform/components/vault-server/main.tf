@@ -100,6 +100,7 @@ resource "helm_release" "vault" {
     value = join("\n", concat(
       [
         "ui = true",
+        "disable_mlock = true",
         "",
         "listener \"tcp\" {",
         "  tls_disable     = 0",
