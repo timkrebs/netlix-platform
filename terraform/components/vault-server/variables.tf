@@ -52,13 +52,13 @@ variable "certificate_arn" {
 variable "vault_helm_version" {
   description = "Vault Helm chart version"
   type        = string
-  default     = "0.31.0"
+  default     = "0.32.0"
 }
 
 variable "vault_image_tag" {
   description = "Vault Enterprise container image tag"
   type        = string
-  default     = "1.20.10-ent"
+  default     = "1.21.5-ent"
 }
 
 variable "vault_replicas" {
