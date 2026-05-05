@@ -58,7 +58,7 @@ variable "vault_helm_version" {
 variable "vault_image_tag" {
   description = "Vault Enterprise container image tag"
   type        = string
-  default     = "1.21.5-ent"
+  default     = "2.0.0-ent"
 }
 
 variable "vault_replicas" {
