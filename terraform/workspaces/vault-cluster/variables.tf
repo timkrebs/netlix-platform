@@ -25,9 +25,9 @@ variable "node_instance_types" {
 }
 
 variable "node_desired_size" {
-  description = "Desired number of nodes. 4 (was 3) — t3.small caps at 11 pods/node, and a 3-node cluster runs out of slots once you stack 5 Vault replicas + cert-manager + ALB controller + external-dns + ebs-csi + coredns + aws-node + kube-proxy + Promtail DaemonSet (1 per node). NOTE: the EKS module pins ignore_changes on scaling_config.desired_size (so cluster-autoscaler can manage it), so a Terraform-only bump here does NOT scale the cluster. To go from 3→4 nodes, either run `aws eks update-nodegroup-config --cluster-name <cluster> --nodegroup-name <ng> --scaling-config minSize=3,maxSize=6,desiredSize=4` first, or set this on initial create."
+  description = "Desired number of nodes. 5 (was 4) — needed during rolling Vault upgrades because the OnDelete strategy temporarily creates a 6th vault pod (terminating + new) on the same AZ-pinned PVC, and t3.small's 11-pod cap means each AZ needs ≥2 nodes. NOTE: the EKS module pins ignore_changes on scaling_config.desired_size (so cluster-autoscaler can manage it), so a Terraform-only bump here does NOT scale the cluster. To go from 3→5 nodes, run `aws eks update-nodegroup-config --cluster-name <cluster> --nodegroup-name <ng> --scaling-config minSize=3,maxSize=6,desiredSize=5` first, or set this on initial create."
   type        = number
-  default     = 4
+  default     = 5
 }
 
 variable "node_min_size" {
